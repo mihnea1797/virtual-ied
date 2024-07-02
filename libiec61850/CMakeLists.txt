@@ -28,7 +28,7 @@ test_big_endian(PLATFORM_IS_BIGENDIAN)
 set(CONFIG_MMS_MAXIMUM_PDU_SIZE "65000" CACHE STRING "Configure the maximum size of an MMS PDU (default 65000)"   )
 set(CONFIG_MAXIMUM_TCP_CLIENT_CONNECTIONS 5 CACHE STRING "Configure the maximum number of clients allowed to connect to the server")
 
-option(BUILD_EXAMPLES "Build the examples" ON)
+option(BUILD_EXAMPLES "Build the examples" OFF)
 option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
 
 option(CONFIG_MMS_SINGLE_THREADED "Compile for single threaded version" ON)

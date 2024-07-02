@@ -69,6 +69,8 @@ static void svUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscri
 
             if (false)
             {
+                // parameter -> functie din goose
+                // call_parameter => parameter() -> trimite
                 // Publish a GOOSE message
                 GoosePublisher publisher = (GoosePublisher)parameter;
                 LinkedList dataSetValues = LinkedList_create();
