@@ -1,4 +1,5 @@
 #include "SampledValuesSubscriberWrapper.hpp"
+#include <fstream>
 
 SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(std::string interface, uint16_t appId, bool destAddrCheck, double threshold)
 {
@@ -105,5 +106,19 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
     else
     {
         printf("   Data size too small to contain FLOAT32 values\n");
+    }
+}
+
+void SampledValuesSubscriberWrapper::Print()
+{
+    std::ofstream outputFile("output-sv.txt");
+    if (outputFile.is_open())
+    {
+        outputFile << "SampledValuesSubscriberWrapper Configuration:\n";
+        outputFile << "  Interface: " << _interface << "\n";
+        outputFile << "  AppId: " << _appId << "\n";
+        outputFile << "  DestAddrCheck: " << (_destAddrCheck ? "true" : "false") << "\n";
+        outputFile << "  Threshold: " << _listenerParams.threshold << "\n";
+        outputFile.close();
     }
 }

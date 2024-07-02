@@ -1,4 +1,5 @@
 #include "GoosePublisherWrapper.hpp"
+#include <fstream>
 
 GoosePublisherWrapper::GoosePublisherWrapper(std::string interface,
                                              std::string goId,
@@ -97,4 +98,39 @@ void GoosePublisherWrapper::PublishMessage()
     LinkedList_destroyDeep(dataSetValues, (LinkedListValueDeleteFunction)MmsValue_delete);
 
     printf("GOOSE message published due to threshold breach\n");
+}
+
+void GoosePublisherWrapper::Print()
+{
+    std::ofstream outputFile("output-goose.txt");
+    if (outputFile.is_open())
+    {
+        outputFile << "GoosePublisherWrapper Configuration:\n";
+        outputFile << "  Interface: " << _interface << "\n";
+        outputFile << "  GoID: " << _goId << "\n";
+        outputFile << "  GoCbRef: " << _goCbRef << "\n";
+        outputFile << "  TimeAllowedToLive: " << _timeAllowedToLive << "\n";
+        outputFile << "  DataSetRef: " << _dataSetRef << "\n";
+        outputFile << "  ConfRev: " << _confRev << "\n";
+        outputFile << "  VlanPriority: " << static_cast<int>(_commParameters.vlanPriority) << "\n";
+        outputFile << "  VlanId: " << _commParameters.vlanId << "\n";
+        outputFile << "  AppId: " << _commParameters.appId << "\n";
+        outputFile << "  DstAddress: " << GoosePublisherWrapper::MacAddressToString(_commParameters.dstAddress) << "\n";
+        outputFile.close();
+    }
+}
+
+std::string GoosePublisherWrapper::MacAddressToString(const uint8_t macAddress[6])
+{
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0');
+    for (int i = 0; i < 6; ++i)
+    {
+        oss << std::setw(2) << static_cast<int>(macAddress[i]);
+        if (i < 5)
+        {
+            oss << ":";
+        }
+    }
+    return oss.str();
 }

@@ -35,4 +35,5 @@ public:
 
     void Start();
     void SetListener(std::function<void()> goosePublishMessageFunction);
+    void Print();
 };

@@ -25,6 +25,7 @@ private:
     bool _ndsCom;
 
     bool ParseMacAddress(const std::string &macStr, uint8_t macAddress[6]);
+    std::string MacAddressToString(const uint8_t macAddress[6]);
 
 public:
     GoosePublisherWrapper(std::string interface,
@@ -40,4 +41,5 @@ public:
     ~GoosePublisherWrapper();
 
     void PublishMessage();
+    void Print();
 };

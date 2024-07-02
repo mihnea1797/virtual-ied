@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider              = "zod-prisma"
+  output                = "./zod"
+  relationModel         = true
+  modelCase             = "camelCase"
+  modelSuffix           = "Schema"
+  useDecimalJs          = true
+  prismaJsonNullability = true
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id             String    @id
+  email          String    @unique
+  hashedPassword String
+  name           String?
+  sessions       Session[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(references: [id], fields: [userId], onDelete: Cascade)
+}
+
+model GooseSetting {
+  id                String   @id @default(cuid())
+  vlanPriority      Int
+  vlanId            Int
+  appId             Int
+  dstAddress        String?
+  ethernetInterface String
+  useVlanTag        Boolean?
+  goId              String
+  goCb              String
+  timeAllowedToLive Int
+  dataSetRef        String
+  simulation        Boolean?
+  confRev           Int
+  ndsCom            Boolean?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model SampledValuesSetting {
+  id                String  @id @default(cuid())
+  appId             Int
+  ethernetInterface String
+  dstAddressCheck   Boolean
+  threshold         Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
