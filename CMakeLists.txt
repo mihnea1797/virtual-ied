@@ -25,22 +25,8 @@ else()
     message(STATUS "libiec61850 library: ${LIBIEC61850_LIBRARY}")
 endif()
 
-# Find the installed SimpleAmqpClient library
-find_path(SIMPLEAMQPCLIENT_INCLUDE_DIR SimpleAmqpClient/SimpleAmqpClient.h PATHS /usr/local/include)
-find_library(SIMPLEAMQPCLIENT_LIBRARY SimpleAmqpClient PATHS /usr/local/lib)
-
-if (NOT SIMPLEAMQPCLIENT_INCLUDE_DIR OR NOT SIMPLEAMQPCLIENT_LIBRARY)
-    message(FATAL_ERROR "SimpleAmqpClient not found")
-else()
-    message(STATUS "SimpleAmqpClient include directory: ${SIMPLEAMQPCLIENT_INCLUDE_DIR}")
-    message(STATUS "SimpleAmqpClient library: ${SIMPLEAMQPCLIENT_LIBRARY}")
-endif()
-
-# Include the libiec61850 headers
+# Include directories
 include_directories(${LIBIEC61850_INCLUDE_DIR})
-
-# Include SimpleAmqpClient headers
-include_directories(${SIMPLEAMQPCLIENT_INCLUDE_DIR})
 
 # Source files for the merging-unit project
 set(SOURCES
@@ -58,15 +44,19 @@ set(HEADERS
 # Add the executable
 add_executable(merging-unit ${SOURCES} ${HEADERS})
 
-# Link the shared libiec61850 and SimpleAmqpClient libraries
+# Link the shared libraries
 target_link_libraries(merging-unit
     ${LIBIEC61850_LIBRARY}
-    ${SIMPLEAMQPCLIENT_LIBRARY}
-    # Add other libraries you need to link here
 )
 
-# Ensure the libiec61850 and SimpleAmqpClient headers are available to the merging-unit project
+# Ensure the include directories are available to the merging-unit project
 target_include_directories(merging-unit PRIVATE
     ${LIBIEC61850_INCLUDE_DIR}
-    ${SIMPLEAMQPCLIENT_INCLUDE_DIR}
+)
+
+# Set the RPATH to find the shared libraries at runtime
+set_target_properties(merging-unit PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+    INSTALL_RPATH "/usr/local/lib"
 )

@@ -1,5 +1,0 @@
-SampledValuesSubscriberWrapper Configuration:
-  Interface: eth0
-  AppId: 16384
-  DestAddrCheck: false
-  Threshold: 1

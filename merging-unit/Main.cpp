@@ -3,9 +3,11 @@
 #include <memory>
 #include <getopt.h>
 #include <iostream>
+#include <string>
 
 // Function to print usage
-void printUsage() {
+void printUsage()
+{
     std::cout << "Usage: merging-unit [OPTIONS]\n"
               << "Options:\n"
               << "  --goose-interface <interface>            Set GOOSE interface\n"
@@ -24,7 +26,8 @@ void printUsage() {
               << "  --sampled-values-threshold <threshold>   Set Sampled Values threshold\n";
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     std::string gooseInterface = "eth0";
     std::string gooseGoId = "AA1J4Q15A1LD0/LLN0.RPG";
     std::string gooseGoCbRef = "AA1J4Q15A1LD0/LLN0$GO$RPG";
@@ -56,34 +59,50 @@ int main(int argc, char *argv[]) {
         {"sampled-values-appId", required_argument, 0, 0},
         {"sampled-values-destAddrCheck", required_argument, 0, 0},
         {"sampled-values-threshold", required_argument, 0, 0},
-        {0, 0, 0, 0}
-    };
+        {0, 0, 0, 0}};
 
     int option_index = 0;
     int c;
-    while ((c = getopt_long(argc, argv, "", long_options, &option_index)) != -1) {
-        switch (c) {
-            case 0:
-                if (optarg) {
-                    std::string optName = long_options[option_index].name;
-                    if (optName == "goose-interface") gooseInterface = optarg;
-                    else if (optName == "goose-goId") gooseGoId = optarg;
-                    else if (optName == "goose-goCbRef") gooseGoCbRef = optarg;
-                    else if (optName == "goose-timeAllowedToLive") gooseTimeAllowedToLive = std::stoul(optarg);
-                    else if (optName == "goose-dataSetRef") gooseDataSetRef = optarg;
-                    else if (optName == "goose-confRev") gooseConfRev = std::stoul(optarg);
-                    else if (optName == "goose-vlanPriority") gooseVlanPriority = std::stoul(optarg);
-                    else if (optName == "goose-vlanId") gooseVlanId = std::stoul(optarg);
-                    else if (optName == "goose-appId") gooseAppId = std::stoul(optarg);
-                    else if (optName == "goose-dstAddress") gooseDstAddress = optarg;
-                    else if (optName == "sampled-values-interface") svInterface = optarg;
-                    else if (optName == "sampled-values-appId") svAppId = std::stoul(optarg);
-                    else if (optName == "sampled-values-destAddrCheck") svDestAddrCheck = (std::string(optarg) == "true");
-                    else if (optName == "sampled-values-threshold") svThreshold = std::stod(optarg);
-                }
-                break;
-            default:
-                break;
+    while ((c = getopt_long(argc, argv, "", long_options, &option_index)) != -1)
+    {
+        switch (c)
+        {
+        case 0:
+            if (optarg)
+            {
+                std::string optName = long_options[option_index].name;
+                if (optName == "goose-interface")
+                    gooseInterface = optarg;
+                else if (optName == "goose-goId")
+                    gooseGoId = optarg;
+                else if (optName == "goose-goCbRef")
+                    gooseGoCbRef = optarg;
+                else if (optName == "goose-timeAllowedToLive")
+                    gooseTimeAllowedToLive = std::stoul(optarg);
+                else if (optName == "goose-dataSetRef")
+                    gooseDataSetRef = optarg;
+                else if (optName == "goose-confRev")
+                    gooseConfRev = std::stoul(optarg);
+                else if (optName == "goose-vlanPriority")
+                    gooseVlanPriority = std::stoul(optarg);
+                else if (optName == "goose-vlanId")
+                    gooseVlanId = std::stoul(optarg);
+                else if (optName == "goose-appId")
+                    gooseAppId = std::stoul(optarg);
+                else if (optName == "goose-dstAddress")
+                    gooseDstAddress = optarg;
+                else if (optName == "sampled-values-interface")
+                    svInterface = optarg;
+                else if (optName == "sampled-values-appId")
+                    svAppId = std::stoul(optarg);
+                else if (optName == "sampled-values-destAddrCheck")
+                    svDestAddrCheck = (std::string(optarg) == "true");
+                else if (optName == "sampled-values-threshold")
+                    svThreshold = std::stod(optarg);
+            }
+            break;
+        default:
+            break;
         }
     }
 
@@ -97,12 +116,12 @@ int main(int argc, char *argv[]) {
     goosePublisher->Print();
     sampledValuesSubscriber->Print();
 
-    sampledValuesSubscriber->SetListener([&]() {
-        return goosePublisher->PublishMessage();
-    });
+    sampledValuesSubscriber->SetListener([&]()
+                                         { return goosePublisher->PublishMessage(); });
     sampledValuesSubscriber->Start();
 
-    while (true) {
+    while (true)
+    {
         // do nothing
     }
     return 0;

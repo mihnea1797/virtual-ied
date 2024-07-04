@@ -1,4 +1,5 @@
 import { db } from "@/lib/db/index";
+import { send } from "@/lib/message-queue/producer";
 import { spawn } from "child_process";
 
 let child: any = undefined;

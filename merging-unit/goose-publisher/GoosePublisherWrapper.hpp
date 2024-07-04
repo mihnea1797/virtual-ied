@@ -1,6 +1,6 @@
 extern "C"
 {
-#include "goose_publisher.h"
+#include <goose_publisher.h>
 }
 
 #include <sstream>
