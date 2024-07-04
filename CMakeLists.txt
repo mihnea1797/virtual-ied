@@ -14,22 +14,33 @@ if(DEFINED ENV{TOOLCHAIN})
     set(CMAKE_AR "$ENV{TOOLCHAIN}ar" CACHE FILEPATH "CW archiver" FORCE)
 endif()
 
-# Add subdirectory for libiec61850
-add_subdirectory(libiec61850)
+# Find the installed libiec61850 library
+find_path(LIBIEC61850_INCLUDE_DIR NAMES iec61850_server.h PATHS /usr/local/include/libiec61850)
+find_library(LIBIEC61850_LIBRARY NAMES iec61850 PATHS /usr/local/lib)
+
+if (NOT LIBIEC61850_INCLUDE_DIR OR NOT LIBIEC61850_LIBRARY)
+    message(FATAL_ERROR "libiec61850 not found")
+else()
+    message(STATUS "libiec61850 include directory: ${LIBIEC61850_INCLUDE_DIR}")
+    message(STATUS "libiec61850 library: ${LIBIEC61850_LIBRARY}")
+endif()
+
+# Find the installed SimpleAmqpClient library
+find_path(SIMPLEAMQPCLIENT_INCLUDE_DIR SimpleAmqpClient/SimpleAmqpClient.h PATHS /usr/local/include)
+find_library(SIMPLEAMQPCLIENT_LIBRARY SimpleAmqpClient PATHS /usr/local/lib)
+
+if (NOT SIMPLEAMQPCLIENT_INCLUDE_DIR OR NOT SIMPLEAMQPCLIENT_LIBRARY)
+    message(FATAL_ERROR "SimpleAmqpClient not found")
+else()
+    message(STATUS "SimpleAmqpClient include directory: ${SIMPLEAMQPCLIENT_INCLUDE_DIR}")
+    message(STATUS "SimpleAmqpClient library: ${SIMPLEAMQPCLIENT_LIBRARY}")
+endif()
 
 # Include the libiec61850 headers
-include_directories(
-    ${CMAKE_SOURCE_DIR}/libiec61850/src/common/inc
-    ${CMAKE_SOURCE_DIR}/libiec61850/src/goose
-    ${CMAKE_SOURCE_DIR}/libiec61850/src/sampled_values
-    ${CMAKE_SOURCE_DIR}/libiec61850/hal/inc
-    ${CMAKE_SOURCE_DIR}/libiec61850/src/iec61850/inc
-    ${CMAKE_SOURCE_DIR}/libiec61850/src/iec61850/inc_private
-    ${CMAKE_SOURCE_DIR}/libiec61850/src/mms/inc
-    ${CMAKE_SOURCE_DIR}/libiec61850/src/mms/inc_private
-    ${CMAKE_SOURCE_DIR}/libiec61850/src/mms/iso_mms/asn1c
-    ${CMAKE_SOURCE_DIR}/libiec61850/src/logging
-)
+include_directories(${LIBIEC61850_INCLUDE_DIR})
+
+# Include SimpleAmqpClient headers
+include_directories(${SIMPLEAMQPCLIENT_INCLUDE_DIR})
 
 # Source files for the merging-unit project
 set(SOURCES
@@ -47,10 +58,15 @@ set(HEADERS
 # Add the executable
 add_executable(merging-unit ${SOURCES} ${HEADERS})
 
-# Link the shared libiec61850 library
+# Link the shared libiec61850 and SimpleAmqpClient libraries
 target_link_libraries(merging-unit
-    iec61850-shared  # Link against the shared library target
+    ${LIBIEC61850_LIBRARY}
+    ${SIMPLEAMQPCLIENT_LIBRARY}
+    # Add other libraries you need to link here
 )
 
-# Ensure the libiec61850 headers are available to the merging-unit project
-target_include_directories(merging-unit PRIVATE ${LIBIEC61850_DIR}/include)
+# Ensure the libiec61850 and SimpleAmqpClient headers are available to the merging-unit project
+target_include_directories(merging-unit PRIVATE
+    ${LIBIEC61850_INCLUDE_DIR}
+    ${SIMPLEAMQPCLIENT_INCLUDE_DIR}
+)
