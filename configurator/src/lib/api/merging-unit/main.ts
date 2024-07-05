@@ -1,49 +1,68 @@
 import { db } from "@/lib/db/index";
-import { send } from "@/lib/message-queue/producer";
 import { spawn } from "child_process";
+import fs from "fs";
+import path from "path";
 
 let child: any = undefined;
 
-export const startMergingUnit = async () => {
+const configFilePath = "/opt/virtual-merging-unit/config.json";
+const configDirPath = path.dirname(configFilePath);
+
+const ensureDirectoryExists = (dir: string) => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+};
+
+const removeUnwantedFields = (settings: any) => {
+    const { id, createdAt, updatedAt, ...filteredSettings } = settings;
+    return filteredSettings;
+};
+
+const writeConfigToFile = async () => {
     const gooseSettings = await db.gooseSetting.findFirst();
+    const sampledValuesSettings = await db.sampledValuesSetting.findFirst();
 
     if (!gooseSettings) {
         throw new Error("No goose settings found");
     }
 
-    const args: string[] = [];
-    for (const [key, value] of Object.entries(gooseSettings)) {
-        if (key === "id" || key === "createdAt" || key === "updatedAt") {
-            continue;
-        }
-        args.push(`--goose-${key}`);
-        args.push(`${value}`);
-    }
-
-    const sampledValuesSettings = await db.sampledValuesSetting.findFirst();
-
     if (!sampledValuesSettings) {
         throw new Error("No sampled values settings found");
     }
 
-    for (const [key, value] of Object.entries(sampledValuesSettings)) {
-        if (key === "id" || key === "createdAt" || key === "updatedAt") {
-            continue;
-        }
-        args.push(`--sampled-values-${key}`);
-        args.push(`${value}`);
-    }
+    const config = {
+        gooseSettings: removeUnwantedFields(gooseSettings),
+        sampledValuesSettings: removeUnwantedFields(sampledValuesSettings),
+    };
+
+    ensureDirectoryExists(configDirPath);
+    fs.writeFileSync(configFilePath, JSON.stringify(config, null, 2));
+};
+
+export const startMergingUnit = async () => {
+    await writeConfigToFile();
 
     const command = "/root/virtual-merging-unit/build/merging-unit";
 
     // console log the command with arguments
-    console.log(
-        `Starting merging unit with command: ${command} ${args.join(" ")}`
-    );
+    console.log(`Starting merging unit with command: ${command}`);
 
     // Spawn the new process
-    child = spawn(command, args, {
+    child = spawn(command, [], {
         detached: false,
+    });
+
+    child.stdout.on("data", (data: string) => {
+        console.log(`stdout: ${data}`);
+    });
+
+    child.stderr.on("data", (data: string) => {
+        console.error(`stderr: ${data}`);
+    });
+
+    child.on("close", (code: any) => {
+        console.log(`child process exited with code ${code}`);
     });
 };
 

@@ -1,44 +1,9 @@
 #include "GoosePublisherWrapper.hpp"
 #include <fstream>
 
-GoosePublisherWrapper::GoosePublisherWrapper(std::string interface,
-                                             std::string goId,
-                                             std::string goCbRef,
-                                             uint32_t timeAllowedToLive,
-                                             std::string dataSetRef,
-                                             uint32_t confRev,
-                                             uint8_t vlanPriority,
-                                             uint16_t vlanId,
-                                             uint16_t appId,
-                                             std::string dstAddress)
+GoosePublisherWrapper::GoosePublisherWrapper(const nlohmann::json &settings)
 {
-    _interface = interface;
-    _goId = goId;
-    _goCbRef = goCbRef;
-    _timeAllowedToLive = timeAllowedToLive;
-    _dataSetRef = dataSetRef;
-    _confRev = confRev;
-
-    // Initialize other parameters (example)
-    _commParameters.appId = appId;
-    _commParameters.vlanId = vlanId;
-    _commParameters.vlanPriority = vlanPriority;
-    uint8_t parsedDstAddress[6];
-    if (ParseMacAddress(dstAddress, parsedDstAddress))
-    {
-        for (int i = 0; i < 6; ++i)
-        {
-            _commParameters.dstAddress[i] = parsedDstAddress[i];
-        }
-    }
-    else
-    {
-        // Broadcast MAC address
-        for (int i = 0; i < 6; ++i)
-        {
-            _commParameters.dstAddress[i] = 0xFF;
-        }
-    }
+    ParseSettings(settings);
 
     // Initialize the publisher
     _publisher = GoosePublisher_create(&_commParameters, _interface.c_str());
@@ -133,4 +98,35 @@ std::string GoosePublisherWrapper::MacAddressToString(const uint8_t macAddress[6
         }
     }
     return oss.str();
+}
+
+void GoosePublisherWrapper::ParseSettings(const nlohmann::json &settings)
+{
+    _interface = settings.at("ethernetInterface").get<std::string>();
+    _goId = settings.at("goId").get<std::string>();
+    _goCbRef = settings.at("goCb").get<std::string>();
+    _timeAllowedToLive = settings.at("timeAllowedToLive").get<uint32_t>();
+    _dataSetRef = settings.at("dataSetRef").get<std::string>();
+    _confRev = settings.at("confRev").get<uint32_t>();
+    _commParameters.vlanPriority = settings.at("vlanPriority").get<uint8_t>();
+    _commParameters.vlanId = settings.at("vlanId").get<uint16_t>();
+    _commParameters.appId = settings.at("appId").get<uint16_t>();
+
+    std::string dstAddress = settings.at("dstAddress").get<std::string>();
+    uint8_t parsedDstAddress[6];
+    if (ParseMacAddress(dstAddress, parsedDstAddress))
+    {
+        for (int i = 0; i < 6; ++i)
+        {
+            _commParameters.dstAddress[i] = parsedDstAddress[i];
+        }
+    }
+    else
+    {
+        // Broadcast MAC address
+        for (int i = 0; i < 6; ++i)
+        {
+            _commParameters.dstAddress[i] = 0xFF;
+        }
+    }
 }

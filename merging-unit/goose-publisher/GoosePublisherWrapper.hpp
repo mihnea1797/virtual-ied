@@ -7,6 +7,7 @@ extern "C"
 #include <string>
 #include <iomanip>
 #include <cstdint>
+#include <nlohmann/json.hpp>
 
 class GoosePublisherWrapper
 {
@@ -26,18 +27,10 @@ private:
 
     bool ParseMacAddress(const std::string &macStr, uint8_t macAddress[6]);
     std::string MacAddressToString(const uint8_t macAddress[6]);
+    void ParseSettings(const nlohmann::json &settings);
 
 public:
-    GoosePublisherWrapper(std::string interface,
-                          std::string goId,
-                          std::string goCbRef,
-                          uint32_t timeAllowedToLive,
-                          std::string dataSetRef,
-                          uint32_t confRev,
-                          uint8_t vlanPriority,
-                          uint16_t vlanId,
-                          uint16_t appId,
-                          std::string dstAddress);
+    GoosePublisherWrapper(const nlohmann::json &settings);
     ~GoosePublisherWrapper();
 
     void PublishMessage();

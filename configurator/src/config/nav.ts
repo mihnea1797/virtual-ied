@@ -1,33 +1,11 @@
 import { SidebarLink } from "@/components/SidebarItems";
-import { Cog, Globe, User, HomeIcon } from "lucide-react";
-
-type AdditionalLinks = {
-  title: string;
-  links: SidebarLink[];
-};
+import { Globe, HomeIcon } from "lucide-react";
 
 export const defaultLinks: SidebarLink[] = [
-  { href: "/dashboard", title: "Home", icon: HomeIcon },
-  { href: "/account", title: "Account", icon: User },
-  { href: "/settings", title: "Settings", icon: Cog },
-];
-
-export const additionalLinks: AdditionalLinks[] = [
-  {
-    title: "Entities",
-    links: [
-      {
-        href: "/sampled-values-settings",
-        title: "Sampled Values Settings",
+    { href: "/dashboard", title: "Home", icon: HomeIcon },
+    {
+        href: "/merging-unit-settings",
+        title: "Merging Unit Settings",
         icon: Globe,
-      },
-      {
-        href: "/goose-settings",
-        title: "Goose Settings",
-        icon: Globe,
-      },
-    ],
-  },
-
+    },
 ];
-

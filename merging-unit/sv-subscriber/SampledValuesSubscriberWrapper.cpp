@@ -1,12 +1,9 @@
 #include "SampledValuesSubscriberWrapper.hpp"
 #include <fstream>
 
-SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(std::string interface, uint16_t appId, bool destAddrCheck, double threshold)
+SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &settings)
 {
-    _interface = interface;
-    _appId = appId;
-    _destAddrCheck = destAddrCheck;
-    _listenerParams.threshold = threshold;
+    ParseSettings(settings);
 
     _receiver = SVReceiver_create();
     SVReceiver_setInterfaceId(_receiver, const_cast<char *>(_interface.c_str()));
@@ -121,4 +118,12 @@ void SampledValuesSubscriberWrapper::Print()
         outputFile << "  Threshold: " << _listenerParams.threshold << "\n";
         outputFile.close();
     }
+}
+
+void SampledValuesSubscriberWrapper::ParseSettings(const nlohmann::json &settings)
+{
+    _interface = settings.at("ethernetInterface").get<std::string>();
+    _appId = settings.at("appId").get<uint16_t>();
+    _destAddrCheck = settings.at("dstAddressCheck").get<bool>();
+    _threshold = settings.at("threshold").get<double>();
 }

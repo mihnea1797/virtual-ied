@@ -1,23 +1,27 @@
 import {
+    createGooseSetting,
+    deleteGooseSetting,
+    updateGooseSetting,
+} from "@/lib/api/gooseSettings/mutations";
+import {
+    getAllGooseSettings,
     getGooseSettingById,
     getGooseSettings,
 } from "@/lib/api/gooseSettings/queries";
-import { publicProcedure, router } from "@/lib/server/trpc";
+import { startMergingUnit, stopMergingUnit } from "@/lib/api/merging-unit/main";
 import {
     gooseSettingIdSchema,
     insertGooseSettingParams,
     updateGooseSettingParams,
 } from "@/lib/db/schema/gooseSettings";
-import {
-    createGooseSetting,
-    deleteGooseSetting,
-    updateGooseSetting,
-} from "@/lib/api/gooseSettings/mutations";
-import { startMergingUnit, stopMergingUnit } from "@/lib/api/merging-unit/main";
+import { publicProcedure, router } from "@/lib/server/trpc";
 
 export const gooseSettingsRouter = router({
     getGooseSettings: publicProcedure.query(async () => {
         return getGooseSettings();
+    }),
+    getAllGooseSettings: publicProcedure.query(async () => {
+        return getAllGooseSettings();
     }),
     getGooseSettingById: publicProcedure
         .input(gooseSettingIdSchema)

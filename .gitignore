@@ -51,3 +51,6 @@ Thumbs.db
 build/
 
 core
+
+output-sv.txt
+output-goose.txt

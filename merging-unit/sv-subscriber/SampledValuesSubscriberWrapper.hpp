@@ -1,11 +1,12 @@
-#include <string>
-#include <cstdint>
-#include <functional>
-
 extern "C"
 {
 #include <sv_subscriber.h>
 }
+
+#include <string>
+#include <functional>
+#include <memory>
+#include <nlohmann/json.hpp>
 
 struct ListenerParameters
 {
@@ -28,9 +29,10 @@ private:
     ListenerParameters _listenerParams;
 
     static void SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu);
+    void ParseSettings(const nlohmann::json &settings);
 
 public:
-    SampledValuesSubscriberWrapper(std::string interface, uint16_t appId, bool destAddrCheck, double threshold);
+    SampledValuesSubscriberWrapper(const nlohmann::json &settings);
     ~SampledValuesSubscriberWrapper();
 
     void Start();

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { LucideIcon } from "lucide-react";
 
-import { additionalLinks, defaultLinks } from "@/config/nav";
+import { defaultLinks } from "@/config/nav";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
@@ -29,19 +29,19 @@ const SidebarItems = () => {
             onError: (err) => onError("create", { error: err.message }),
         });
 
+    const onSuccess = async (
+        action: "create" | "update" | "delete",
+        data?: { error?: string }
+    ) => {};
+
+    const onError = async (
+        action: "create" | "update" | "delete",
+        data?: { error?: string }
+    ) => {};
+
     return (
         <>
             <SidebarLinkGroup links={defaultLinks} />
-            {additionalLinks.length > 0
-                ? additionalLinks.map((l) => (
-                      <SidebarLinkGroup
-                          links={l.links}
-                          title={l.title}
-                          border
-                          key={l.title}
-                      />
-                  ))
-                : null}
             <Button
                 onClick={() => startMergingUnit()}
                 disabled={isMergingUnitStarting}
