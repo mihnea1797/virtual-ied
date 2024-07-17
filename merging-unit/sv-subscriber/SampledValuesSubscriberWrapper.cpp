@@ -94,7 +94,7 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
             counter++;
 
             printf("   Threshold: %lf\n", params->threshold);
-            if (voltage > params->threshold && params->goosePublishMessageFunction)
+            if (params->goosePublishMessageFunction)
             {
                 (*(params->goosePublishMessageFunction))();
             }

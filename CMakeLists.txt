@@ -41,6 +41,9 @@ set(HEADERS
     ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/SampledValuesSubscriberWrapper.hpp
 )
 
+# Set the output directory for the binary
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /opt/virtual-merging-unit)
+
 # Add the executable
 add_executable(merging-unit ${SOURCES} ${HEADERS})
 
