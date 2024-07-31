@@ -43,7 +43,7 @@ const writeConfigToFile = async () => {
 export const startMergingUnit = async () => {
     await writeConfigToFile();
 
-    const command = "/root/virtual-merging-unit/build/merging-unit";
+    const command = "/opt/virtual-merging-unit/merging-unit";
 
     // console log the command with arguments
     console.log(`Starting merging unit with command: ${command}`);
