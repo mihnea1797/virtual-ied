@@ -5,7 +5,7 @@
             "name": "Virtual Merging Unit",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/root/virtual-merging-unit/build/merging-unit",
+            "program": "/opt/virtual-merging-unit/merging-unit",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

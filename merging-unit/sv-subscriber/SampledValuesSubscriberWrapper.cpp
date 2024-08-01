@@ -78,26 +78,27 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
         {
             int32_t value = SVSubscriber_ASDU_getINT32(asdu, offset);
             offset += 4;
-            double current = value / (1000 * 1.41);
-            printf("   Current[%d]: %lf\n", counter, current);
+            // double current = value / (1000 * 1.41);
+            printf("   Value[%d]: %d\n", counter, value);
             Quality quality = SVSubscriber_ASDU_getQuality(asdu, offset);
             offset += 4;
-            printf("   Quality_Current[%d]: %u\n", counter, quality);
+            // printf("   Quality[%d]: %u\n", counter, quality);
 
-            value = SVSubscriber_ASDU_getINT32(asdu, offset);
-            offset += 4;
-            double voltage = value / 1.41;
-            printf("   Voltage[%d]: %lf\n", counter, voltage);
-            quality = SVSubscriber_ASDU_getQuality(asdu, offset);
-            offset += 4;
-            printf("   Quality_Voltage[%d]: %u\n", counter, quality);
+            // value = SVSubscriber_ASDU_getINT32(asdu, offset);
+            // offset += 4;
+            // // double voltage = value / 1.41;
+            // printf("   Voltage[%d]: %lf\n", counter, voltage);
+            // quality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            // offset += 4;
+            // printf("   Quality_Voltage[%d]: %u\n", counter, quality);
             counter++;
 
-            printf("   Threshold: %lf\n", params->threshold);
-            if (params->goosePublishMessageFunction)
-            {
-                (*(params->goosePublishMessageFunction))();
-            }
+            // printf("   Threshold: %lf\n\n", params->threshold);
+        }
+        printf("\n\n");
+        if (params->goosePublishMessageFunction)
+        {
+            (*(params->goosePublishMessageFunction))();
         }
     }
     else
