@@ -37,7 +37,8 @@ bool GoosePublisherWrapper::ParseMacAddress(const std::string &macStr, uint8_t m
         int byte;
         iss >> std::hex >> byte >> separator;
 
-        if (iss.fail() || (i < 5 && separator != ':') || (i == 5 && separator != '\0'))
+        // TODO: fix
+        if (i < 5 && separator != ':')
         {
             return false; // Invalid format
         }
@@ -48,13 +49,13 @@ bool GoosePublisherWrapper::ParseMacAddress(const std::string &macStr, uint8_t m
     return true;
 }
 
-void GoosePublisherWrapper::PublishMessage()
+void GoosePublisherWrapper::PublishMessage(bool value)
 {
     LinkedList dataSetValues = LinkedList_create();
 
     // Add values to the GOOSE data set
-    LinkedList_add(dataSetValues, MmsValue_newBoolean(true)); // example value
-    LinkedList_add(dataSetValues, MmsValue_newBitString(23)); // example quality
+    LinkedList_add(dataSetValues, MmsValue_newBoolean(value)); // example value
+    LinkedList_add(dataSetValues, MmsValue_newBitString(23));  // example quality
 
     GoosePublisher_increaseStNum(_publisher);
 

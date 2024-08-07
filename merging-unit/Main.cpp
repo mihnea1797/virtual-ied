@@ -26,8 +26,8 @@ int main()
     goosePublisher->Print();
     sampledValuesSubscriber->Print();
 
-    sampledValuesSubscriber->SetListener([&]()
-                                         { return goosePublisher->PublishMessage(); });
+    sampledValuesSubscriber->SetListener([&](bool value)
+                                         { return goosePublisher->PublishMessage(value); });
     sampledValuesSubscriber->Start();
 
     while (true)

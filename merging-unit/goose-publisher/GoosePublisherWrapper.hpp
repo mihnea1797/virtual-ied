@@ -33,6 +33,6 @@ public:
     GoosePublisherWrapper(const nlohmann::json &settings);
     ~GoosePublisherWrapper();
 
-    void PublishMessage();
+    void PublishMessage(bool value);
     void Print();
 };
