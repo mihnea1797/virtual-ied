@@ -52,7 +52,7 @@ void SampledValuesSubscriberWrapper::Start()
     }
 }
 
-inline double RMS_computation(const int32_t & value, __uint128_t & PREVIOUS_INTERMEDIAR_VALUE_UNSCALED, uint8_t & Sample_Number, __uint128_t  & AUX_RMS_UNSCALED, __uint128_t * prev_val)
+inline double RMS_computation(const int32_t & value, __uint128_t & PREVIOUS_INTERMEDIAR_VALUE_UNSCALED, uint8_t & Sample_Number, __uint128_t  & AUX_RMS_UNSCALED, uint64_t * prev_val)
 {
     /// function arguments meaning
     
@@ -135,15 +135,19 @@ inline double RMS_computation(const int32_t & value, __uint128_t & PREVIOUS_INTE
         return RMS * SQRT2 / SAMPLES_PER_PERIOD;
     }
 
-    // form here on, the Sample_Number iterator acts as a circular iterator, resetting everytime it reaches the value of SAMPLES_PER_PERIOD   
+    // from here on, the Sample_Number iterator acts as a circular iterator, resetting everytime it reaches the value of SAMPLES_PER_PERIOD   
     else
     {
+        
         // calculate an intermediate integer value that's going to be used in the update of the RMS value based on the update rule formula
-        __uint128_t INTERMEDIAR_VALUE_UNSCALED = PREVIOUS_INTERMEDIAR_VALUE_UNSCALED + ((__uint128_t)(voltage_unscaled * voltage_unscaled - prev_val[Sample_Number - SAMPLES_PER_PERIOD])) * SAMPLES_PER_PERIOD ;
-
+        uint64_t newest_voltage_squared = voltage_unscaled * voltage_unscaled; 
+        __uint128_t INTERMEDIAR_VALUE_UNSCALED = PREVIOUS_INTERMEDIAR_VALUE_UNSCALED + ((__uint128_t)(newest_voltage_squared)) * SAMPLES_PER_PERIOD ;
+        __uint128_t SUBSTRACT_OLDEST_VALUE = ((__uint128_t)(prev_val[Sample_Number - SAMPLES_PER_PERIOD])) * SAMPLES_PER_PERIOD ;
+        INTERMEDIAR_VALUE_UNSCALED = ( INTERMEDIAR_VALUE_UNSCALED > SUBSTRACT_OLDEST_VALUE ? INTERMEDIAR_VALUE_UNSCALED - SUBSTRACT_OLDEST_VALUE : 0 );
+        
         // overwrite the value from the array that holds the previous SAMPLE_VALUE_PERIOD values ​​located at the position behind with
         // SAMPLE_VALUE_PERIOD positions from the current position
-        prev_val[Sample_Number - SAMPLES_PER_PERIOD] = voltage_unscaled * voltage_unscaled;
+        prev_val[Sample_Number - SAMPLES_PER_PERIOD] = newest_voltage_squared;
 
         // update the value of PREVIOUS_INTERMEDIAR_VALUE_UNSCALED
         PREVIOUS_INTERMEDIAR_VALUE_UNSCALED = INTERMEDIAR_VALUE_UNSCALED; 
@@ -187,7 +191,7 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
     static __uint128_t PREVIOUS_INTERMEDIAR_VALUE_UNSCALED = 0;
     static uint8_t Sample_Number = 0; 
     static __uint128_t AUX_RMS_UNSCALED = 0;
-    static __uint128_t prev_val[SAMPLES_PER_PERIOD];
+    static uint64_t prev_val[SAMPLES_PER_PERIOD];
 
     // variable used to store the RMS value
     double RMS;
