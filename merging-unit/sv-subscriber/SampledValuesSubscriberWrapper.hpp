@@ -7,28 +7,14 @@ extern "C"
 #include <functional>
 #include <memory>
 #include <nlohmann/json.hpp>
-
-using namespace std;
-
-// value used for scaling the sampled values received from ISA
-#define SCALING_CONSTANT ((_Float64)537401.187777)
-
-// the value mentioned above squared
-#define SCALING_CONSTANT_SQUARED (((_Float128)537401.187777) * ((_Float128)537401.187777))
-
-// square root of 2
-#define SQRT2 (double(sqrt(2)))
-
-// number of sample values per signal period
-#define SAMPLES_PER_PERIOD ((uint8_t)80)
+#include <fstream>
+#include "RmsComputationObject.hpp"
 
 struct ListenerParameters
 {
     double threshold;
     std::function<void(bool)> *goosePublishMessageFunction;
 };
-
-inline double RMS_computation(const int32_t & value, __uint128_t & PREVIOUS_INTERMEDIAR_VALUE_UNSCALED, uint8_t & Sample_Number, __uint128_t  & AUX_RMS_UNSCALED, uint64_t * prev_val);
 
 class SampledValuesSubscriberWrapper
 {

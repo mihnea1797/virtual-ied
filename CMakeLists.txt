@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.5.1)
 project(merging-unit)
 
 # Specify the C++ standard
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Detect if we should cross-compile
@@ -28,17 +28,23 @@ endif()
 # Include directories
 include_directories(${LIBIEC61850_INCLUDE_DIR})
 
+## directory containing hal_socket.h library necessary for libiec61850 proper working
+include_directories(/root/libiec61850/hal/inc)
+## to be removed, used for testing 
+
 # Source files for the merging-unit project
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/merging-unit/Main.cpp
     ${CMAKE_SOURCE_DIR}/merging-unit/goose-publisher/GoosePublisherWrapper.cpp
     ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/SampledValuesSubscriberWrapper.cpp
+    ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/RmsComputationObject.cpp
 )
 
 # Header files for the merging-unit project
 set(HEADERS
     ${CMAKE_SOURCE_DIR}/merging-unit/goose-publisher/GoosePublisherWrapper.hpp
     ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/SampledValuesSubscriberWrapper.hpp
+    ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/RmsComputationObject.hpp
 )
 
 # Set the output directory for the binary
