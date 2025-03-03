@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _RMS_COMPUTATION_H
+#define _RMS_COMPUTATION_H
 
 #include <cstdint>
 #include <cmath>
@@ -40,3 +41,5 @@ public:
     ~RmsComputationObject();
     double computeValue(int32_t value);
 };
+
+#endif

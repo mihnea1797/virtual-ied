@@ -37,15 +37,16 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/merging-unit/Main.cpp
     ${CMAKE_SOURCE_DIR}/merging-unit/goose-publisher/GoosePublisherWrapper.cpp
     ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/SampledValuesSubscriberWrapper.cpp
-    ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/RmsComputationObject.cpp
 )
 
 # Header files for the merging-unit project
 set(HEADERS
     ${CMAKE_SOURCE_DIR}/merging-unit/goose-publisher/GoosePublisherWrapper.hpp
     ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/SampledValuesSubscriberWrapper.hpp
-    ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/RmsComputationObject.hpp
 )
+
+## Adding the rmsComputation library subdirectory
+add_subdirectory(rms-computation)
 
 # Set the output directory for the binary
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /opt/virtual-merging-unit)
@@ -56,11 +57,13 @@ add_executable(merging-unit ${SOURCES} ${HEADERS})
 # Link the shared libraries
 target_link_libraries(merging-unit
     ${LIBIEC61850_LIBRARY}
+    rms-computation
 )
 
 # Ensure the include directories are available to the merging-unit project
 target_include_directories(merging-unit PRIVATE
     ${LIBIEC61850_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/rms-computation
 )
 
 # Set the RPATH to find the shared libraries at runtime
