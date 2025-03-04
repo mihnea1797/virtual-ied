@@ -1,0 +1,46 @@
+#ifndef _BUTTERWORTH_FILTER_H
+#define _BUTTERWORTH_FILTER_H
+
+class ButterworthFilter
+{
+private:
+    // TODO: Atributele clasei ButterworthFilter, cel mai probabil acestea fiind:
+    //       1) Ordinul filtrului: uint8_t -> posibil nu atat de util dupa discretizare
+    //          cand polinoamele de la numarator si numitor se vor modifica in urma 
+    //          aplicarii metodei Tustin
+    //       2) Pulsatia de taiere a filtrului: float -> aceasta isi va pastra importanta
+    //          chiar si in urma discretizarii
+    //       3) Vector ce contine coeficientii numaratorului filtrului 
+    //          ( in urma discretizarii ) : std::vector<uint64_t>
+    //       4) Vector ce contine coeficientii numitorului filtrului 
+    //          ( in urma discretizarii ) : std::vector<uint64_t>
+    //       5) Queue ce va contine valorile anterioare ale semnalului nefiltrat :
+    //          std::queue<uint64_t>
+    //       6) Queue ce va contine valorile anterioare ale semnalului filtrat :
+    //          std::queue<uint64_t> -> in teorie acestea ar trebui sa fie float 
+    //          sau double, dar, considerand ca lucram cu numere mari, rotunjirea 
+    //          la cel mai apropiat intreg ar duce la o pierdere de acuratete scazuta
+    //          si o reducere semnificativa a timpului de executie
+public:
+    ButterworthFilter();
+    // TODO : Constructor cu parametri, cel mai probabil acesti parametri vor fi:
+    //        1) Ordinul filtrului: uint8_t
+    //        2) Pulsatia de taiere a filtrului: float -> de gandit daca valoare 
+    //           normalizata sau nenormalizata a pulsatiei de taiere, cel mai probabil
+    //           nenormalizata ( bazat pe lucrarea stintifica )
+    //        Acest constructor va avea urmatoarele atributii:
+    //        1) Caluleaza polii functiei de transfer aferente filtrului folosind 
+    //           radacinile de ordin n ale unitatii : s^n = 1
+    //        2) Calculeaza coeficientii pe baza polilor calculati anterior
+    //        3) Discretizeaza acest filtru folosind metoda de discretizare Tustin
+    //           ( in cazul nostru, perioada noastra de esantionare este 50Hz * 80 
+    //           samples / period = 4000 Hz )   
+    ~ButterworthFilter();
+    // TODO : Adaugare metoda de filtrare avand, cel mai probabil, semnatura:
+    //        uint64_t filter( uint64_t )
+    //        , unde parametrul va fi esantionul tocmai primit din semnalul nefiltrat
+    //        iar valoarea returnata va fi valoarea aferenta esantionului respectiv
+    //        din semnalul filtrat
+};
+
+#endif

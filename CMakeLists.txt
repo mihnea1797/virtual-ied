@@ -25,12 +25,20 @@ else()
     message(STATUS "libiec61850 library: ${LIBIEC61850_LIBRARY}")
 endif()
 
-# Include directories
-include_directories(${LIBIEC61850_INCLUDE_DIR})
+# Find the location oh hal_socket.h library
+find_path(LIBIEC61850_HAL_SOCKET NAMES hal_socket.h PATHS /usr/local/libiec61850/hal/inc)
+if(NOT LIBIEC61850_HAL_SOCKET)
+    message(FATAL_ERROR "libiec61850 : hal_socket.h not found")
+else()
+    message(STATUS "libiec61850 : hal_socket.h include directory: ${LIBIEC61850_HAL_SOCKET}")
+endif()
 
-## directory containing hal_socket.h library necessary for libiec61850 proper working
-include_directories(/root/libiec61850/hal/inc)
-## to be removed, used for testing 
+# Include directories
+set(INCLUDE_DIRECTORIES
+    ${LIBIEC61850_INCLUDE_DIR}
+    ${LIBIEC61850_HAL_SOCKET}
+)
+include_directories(${INCLUDE_DIRECTORIES})
 
 # Source files for the merging-unit project
 set(SOURCES
@@ -45,8 +53,9 @@ set(HEADERS
     ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/SampledValuesSubscriberWrapper.hpp
 )
 
-## Adding the rmsComputation library subdirectory
+# Adding library subdirectories
 add_subdirectory(${CMAKE_SOURCE_DIR}/merging-unit/rms-computation)
+add_subdirectory(${CMAKE_SOURCE_DIR}/merging-unit/butterworth-filter)
 
 # Set the output directory for the binary
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /opt/virtual-merging-unit)
@@ -54,17 +63,24 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /opt/virtual-merging-unit)
 # Add the executable
 add_executable(merging-unit ${SOURCES} ${HEADERS})
 
-# Link the shared libraries
-target_link_libraries(merging-unit
+# Share libraries
+set(SHARED_LIBRARIES
     ${LIBIEC61850_LIBRARY}
     rms-computation
+    butterworth-filter
+)
+# Link the shared libraries
+target_link_libraries(merging-unit ${SHARED_LIBRARIES})
+
+# Include directories
+set(INCLUDE_DIRECTORIES
+    ${LIBIEC61850_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/merging-unit/rms-computation
+    ${CMAKE_SOURCE_DIR}/merging-unit/butterworth-filter
 )
 
 # Ensure the include directories are available to the merging-unit project
-target_include_directories(merging-unit PRIVATE
-    ${LIBIEC61850_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/merging-unit/rms-computation
-)
+target_include_directories(merging-unit PRIVATE ${INCLUDE_DIRECTORIES})
 
 # Set the RPATH to find the shared libraries at runtime
 set_target_properties(merging-unit PROPERTIES

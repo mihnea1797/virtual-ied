@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5.1)
 
-# Create the rmsComputation library
+# Create the rms-computation library
 add_library(rms-computation STATIC RmsComputationObject.cpp)
 
 # Include current directory
