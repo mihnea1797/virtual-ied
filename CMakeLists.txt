@@ -46,7 +46,7 @@ set(HEADERS
 )
 
 ## Adding the rmsComputation library subdirectory
-add_subdirectory(rms-computation)
+add_subdirectory(${CMAKE_SOURCE_DIR}/merging-unit/rms-computation)
 
 # Set the output directory for the binary
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /opt/virtual-merging-unit)
@@ -63,7 +63,7 @@ target_link_libraries(merging-unit
 # Ensure the include directories are available to the merging-unit project
 target_include_directories(merging-unit PRIVATE
     ${LIBIEC61850_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/rms-computation
+    ${CMAKE_SOURCE_DIR}/merging-unit/rms-computation
 )
 
 # Set the RPATH to find the shared libraries at runtime
