@@ -1,6 +1,11 @@
 #ifndef _BUTTERWORTH_FILTER_H
 #define _BUTTERWORTH_FILTER_H
 
+#include <cstdint>
+#include <vector>
+#include <queue>
+#include <cmath>
+
 class ButterworthFilter
 {
 private:
@@ -8,26 +13,43 @@ private:
     //       1) Ordinul filtrului: uint8_t -> posibil nu atat de util dupa discretizare
     //          cand polinoamele de la numarator si numitor se vor modifica in urma 
     //          aplicarii metodei Tustin
-    //       2) Pulsatia de taiere a filtrului: float -> aceasta isi va pastra importanta
+    uint8_t order;
+    //       2) Frecventa de taiere a filtrului: float -> aceasta isi va pastra importanta
     //          chiar si in urma discretizarii
-    //       3) Vector ce contine coeficientii numaratorului filtrului 
-    //          ( in urma discretizarii ) : std::vector<uint64_t>
-    //       4) Vector ce contine coeficientii numitorului filtrului 
-    //          ( in urma discretizarii ) : std::vector<uint64_t>
-    //       5) Queue ce va contine valorile anterioare ale semnalului nefiltrat :
+    float cutoffFrequency;
+    //       3) Frecventa de esantionare a filtrului: float -> aceasta va fi
+    //          setata la 50Hz * 80 samples / period = 4000 Hz, caz in care,
+    //          conform teoremei de esantionare Nyquist-Shannon: f_cutoff < 
+    //          f_sampling / 2, ne va rezulta ca frecventa de taiere a filtrului
+    //          ar trebui sa fie cel mult 2000 Hz, pentru a se evita fenomenul de 
+    //          aliere in frecventa
+    float samplingFrequency;
+    //       4) Vector ce contine coeficientii numaratorului filtrului 
+    //          ( in urma discretizarii ) : std::vector<double>
+    std::vector<float> numeratorCoeff;
+    //       5) Vector ce contine coeficientii numitorului filtrului 
+    //          ( in urma discretizarii ) : std::vector<double>
+    std::vector<float> denominatorCoeff;
+    //       6) Queue ce va contine valorile anterioare ale semnalului nefiltrat :
     //          std::queue<uint64_t>
-    //       6) Queue ce va contine valorile anterioare ale semnalului filtrat :
+    std::queue<uint64_t> previousUnfilteredSamples;
+    //       7) Queue ce va contine valorile anterioare ale semnalului filtrat :
     //          std::queue<uint64_t> -> in teorie acestea ar trebui sa fie float 
     //          sau double, dar, considerand ca lucram cu numere mari, rotunjirea 
     //          la cel mai apropiat intreg ar duce la o pierdere de acuratete scazuta
     //          si o reducere semnificativa a timpului de executie
+    std::queue<uint64_t> previousFilteredSamples;
+
+
 public:
-    ButterworthFilter();
+    ButterworthFilter() = delete;
     // TODO : Constructor cu parametri, cel mai probabil acesti parametri vor fi:
     //        1) Ordinul filtrului: uint8_t
-    //        2) Pulsatia de taiere a filtrului: float -> de gandit daca valoare 
+    //        2) Frecventa de taiere a filtrului: float -> de gandit daca valoare 
     //           normalizata sau nenormalizata a pulsatiei de taiere, cel mai probabil
     //           nenormalizata ( bazat pe lucrarea stintifica )
+    //        3) Frecventa de esantionare a filtrului: float
+    //
     //        Acest constructor va avea urmatoarele atributii:
     //        1) Caluleaza polii functiei de transfer aferente filtrului folosind 
     //           radacinile de ordin n ale unitatii : s^n = 1
@@ -35,6 +57,8 @@ public:
     //        3) Discretizeaza acest filtru folosind metoda de discretizare Tustin
     //           ( in cazul nostru, perioada noastra de esantionare este 50Hz * 80 
     //           samples / period = 4000 Hz )   
+    ButterworthFilter(uint8_t order, float cuttoffFrequency, float samplingFrequency);
+
     ~ButterworthFilter();
     // TODO : Adaugare metoda de filtrare avand, cel mai probabil, semnatura:
     //        uint64_t filter( uint64_t )
