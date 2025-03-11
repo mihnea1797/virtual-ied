@@ -73,6 +73,7 @@ public:
     //        , unde parametrul va fi esantionul tocmai primit din semnalul nefiltrat
     //        iar valoarea returnata va fi valoarea aferenta esantionului respectiv
     //        din semnalul filtrat
+    int32_t filter(int32_t inputSample);
 };
 
 #endif

@@ -50,6 +50,8 @@ ButterworthFilter::ButterworthFilter(uint8_t order, float cuttoffFrequency, floa
     }
 
     normalizeVector(denominatorCoeff, denominatorCoeff[0]);
+    // Cum stim ca primul coeficient este 1 ( in urma normalizarii ), acesta nu mai trebuie luat in calcul
+    denominatorCoeff.erase(denominatorCoeff.begin());
 
     // initializare cu 0 a cozilor de valori filtrate si nefiltrate ale semnalului
     previousUnfilteredSamples.resize(numeratorCoeff.size(),0);
@@ -57,7 +59,32 @@ ButterworthFilter::ButterworthFilter(uint8_t order, float cuttoffFrequency, floa
   
 }
 
-std::vector<double> polyMultiplication(const std::vector<double> & polyA, const std::vector<double> & polyB)
+int32_t ButterworthFilter::filter(int32_t inputSample)
+{
+    // Adaugam cel mai recent sample ( nefiltrat ) in spatele cozii de valori nefiltrate
+    previousUnfilteredSamples.emplace_back(inputSample);
+    previousUnfilteredSamples.pop_front();
+
+    double dOutput = 0.0;
+
+    // Adaugam la output contributia valoirlor nefiltrate, dictata de coeficientii numaratorului
+    for(uint16_t i = 0; i < numeratorCoeff.size(); i++)
+        dOutput += previousUnfilteredSamples[i] * numeratorCoeff[numeratorCoeff.size() - 1 - i];
+
+    // Adaugam la output contributia valorilor filtrate, dictata de coeficientii numitorului
+    for(uint16_t i = 0; i < denominatorCoeff.size(); i++)
+        dOutput -= previousFilteredSamples[i] * denominatorCoeff[denominatorCoeff.size() - 1 - i];
+
+    int32_t iOutput = static_cast<int32_t>(dOutput);
+
+    // Adaugam cel mai recent sample ( filtrat ) in spatele cozii de valori filtrate
+    previousFilteredSamples.emplace_back(iOutput);
+    previousFilteredSamples.pop_front();
+    
+    return iOutput;
+}
+
+std::vector<double> ButterworthFilter::polyMultiplication(const std::vector<double> & polyA, const std::vector<double> & polyB)
 {
     if(!polyA.size() || !polyB.size())
         return std::vector<double>();
@@ -70,7 +97,7 @@ std::vector<double> polyMultiplication(const std::vector<double> & polyA, const 
     return polyProd;
 }
 
-bool normalizeVector(std::vector<double> & poly, double normalizationFactor)
+bool ButterworthFilter::normalizeVector(std::vector<double> & poly, double normalizationFactor)
 {   
     
     if(fabs(normalizationFactor) < std::numeric_limits<float>::lowest())
