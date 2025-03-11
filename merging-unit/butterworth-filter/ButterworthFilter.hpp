@@ -3,8 +3,10 @@
 
 #include <cstdint>
 #include <vector>
-#include <queue>
+#include <deque>
 #include <cmath>
+#include <limits>
+#include <string>
 
 class ButterworthFilter
 {
@@ -26,19 +28,25 @@ private:
     float samplingFrequency;
     //       4) Vector ce contine coeficientii numaratorului filtrului 
     //          ( in urma discretizarii ) : std::vector<double>
-    std::vector<float> numeratorCoeff;
+    std::vector<double> numeratorCoeff;
     //       5) Vector ce contine coeficientii numitorului filtrului 
     //          ( in urma discretizarii ) : std::vector<double>
-    std::vector<float> denominatorCoeff;
+    std::vector<double> denominatorCoeff;
     //       6) Queue ce va contine valorile anterioare ale semnalului nefiltrat :
-    //          std::queue<uint64_t>
-    std::queue<uint64_t> previousUnfilteredSamples;
+    //          std::queue<int32_t>
+    std::deque<int32_t> previousUnfilteredSamples;
     //       7) Queue ce va contine valorile anterioare ale semnalului filtrat :
-    //          std::queue<uint64_t> -> in teorie acestea ar trebui sa fie float 
+    //          std::queue<int32_t> -> in teorie acestea ar trebui sa fie float 
     //          sau double, dar, considerand ca lucram cu numere mari, rotunjirea 
     //          la cel mai apropiat intreg ar duce la o pierdere de acuratete scazuta
     //          si o reducere semnificativa a timpului de executie
-    std::queue<uint64_t> previousFilteredSamples;
+    std::deque<int32_t> previousFilteredSamples;
+    //       8) Helper function utilizat pentru realizarea produsului de polinoame:
+    //          std::vector<double> (const std::vector<double> &, const std::vector<double> &)
+    std::vector<double> polyMultiplication(const std::vector<double> & polyA, const std::vector<double> & polyB);
+    //       9) Helper function utilizat pentru normalizarea polinoamelor 
+    //          bool (std::vector<double>, double)
+    bool normalizeVector(std::vector<double> & poly, double normalizationFactor);
 
 
 public:
@@ -61,7 +69,7 @@ public:
 
     ~ButterworthFilter();
     // TODO : Adaugare metoda de filtrare avand, cel mai probabil, semnatura:
-    //        uint64_t filter( uint64_t )
+    //        int32_t filter( int32_t )
     //        , unde parametrul va fi esantionul tocmai primit din semnalul nefiltrat
     //        iar valoarea returnata va fi valoarea aferenta esantionului respectiv
     //        din semnalul filtrat

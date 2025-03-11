@@ -7,65 +7,77 @@ ButterworthFilter::~ButterworthFilter()
 
 ButterworthFilter::ButterworthFilter(uint8_t order, float cuttoffFrequency, float samplingFrequency) : order(order), cutoffFrequency(cutoffFrequency), samplingFrequency(samplingFrequency)
 {
-    // // vector de polinoame ce se vor compune numitorul filtrului Butterworth ( in timp continuu )
-    // std::vector< std::vector<double> > denominatorPoly; 
-    // // vector ce va fi utilizat pentru a stoca "polinoamele" ce urmeaza a fi introduse in denominatorPoly 
-    // std::vector<double> poly;
-    // // Se disting 2 cazuri: n = par ( -2 * pi * cutoffFrequency nu va fi radacina a filtrului ) si n = impar ( -2 * pi * cutoffFrequency va fi radacina a filtrului )
-    // if( order % 2 )
-    // {
-    //     // Adaugam -cutoffFrequency ca radacina a polinomului 
-    //     poly = {1, 2 * M_PI * cutoffFrequency};
-    //     denominatorPoly.push_back(poly);
-    //     poly.clear();
-    // }
-    // // urmeaza sa introducem in denominatorPoly polinoamele formate din perechi de poli complex-conjugati
-    // for(uint8_t k = 1; k <= order / 2; k++)
-    // {
-    //     poly = {1, 4 * M_PI * cutoffFrequency * sin(M_PI * (2 * k - 1) / (2 * order)), 4 * M_PI * M_PI * cutoffFrequency * cutoffFrequency};
-    //     denominatorPoly.push_back(poly);
-    //     poly.clear();
-    // }
-
-    //CHECKPOINT I, pana aici stim ca e bine, am calculat polinoamele aferente filtrelor butterworth pana la ordinul 6 si all seems to be going great
-
     // vector de polinoame ce se vor compune numitorul filtrului Butterworth ( in timp discret )
-    std::vector< std::vector<double> > denominatorPoly; 
+    denominatorCoeff = std::vector<double>({1}); 
     // vector de polinoame ce se vor compune numaratorul filtrului Butterworth ( in timp discret )
-    std::vector< std::vector<double> > numeratorPoly;
-    // vector ce va fi utilizat pentru a stoca "polinoamele" ce urmeaza a fi introduse in denominatorPoly si numeratorPoly
-    std::vector<double> poly;
+    numeratorCoeff = std::vector<double>({1}); 
     // Se disting 2 cazuri: n = par ( -2 * pi * cutoffFrequency nu va fi radacina a filtrului ) si n = impar ( -2 * pi * cutoffFrequency va fi radacina a filtrului )
     if( order % 2 )
     {
+        // vector ce va fi utilizat pentru a stoca "polinoamele" ce urmeaza a fi introduse in denominatorCoeff si numeratorCoeff
+        std::vector<double> intermediatePoly;
         // Adaugam polinomul aferent numitorului filtrului 
-        poly = {2 * M_PI * cutoffFrequency - 2 * samplingFrequency, 2 * M_PI * cutoffFrequency - 2 * samplingFrequency};
-        denominatorPoly.push_back(poly);
-        poly.clear();
+        intermediatePoly = {1 + samplingFrequency / ( M_PI * cutoffFrequency), 1 - samplingFrequency / ( M_PI * cutoffFrequency)};
+        denominatorCoeff = polyMultiplication(denominatorCoeff, intermediatePoly);
+        intermediatePoly.clear();
 
         // Adaugam polinomul aferent numaratorului filtrului 
-        poly = {1, 1};
-        numeratorPoly.push_back(poly);
-        poly.clear();
+        intermediatePoly = {1, 1};
+        numeratorCoeff = polyMultiplication(numeratorCoeff, intermediatePoly);
+        intermediatePoly.clear();
 
     }
-    // urmeaza sa introducem in denominatorPoly polinoamele formate din perechi de poli complex-conjugati
+    // urmeaza sa introducem in denominatorCoeff polinoamele formate din perechi de poli complex-conjugati
     for(uint8_t k = 1; k <= order / 2; k++)
     {
+        // vector ce va fi utilizat pentru a stoca "polinoamele" ce urmeaza a fi introduse in denominatorCoeff si numeratorCoeff
+        std::vector<double> intermediatePoly;
         // Adaugam polinomul aferent numitorului filtrului 
-        poly = {4 * samplingFrequency * samplingFrequency + 8 * M_PI * cutoffFrequency * sin(M_PI * (2 * k - 1) / (2 * order)) + 4 * M_PI * M_PI * cutoffFrequency * cutoffFrequency, 8 * M_PI * M_PI * cutoffFrequency * cutoffFrequency - 8 * samplingFrequency * samplingFrequency, 4 * samplingFrequency * samplingFrequency - 8 * M_PI * cutoffFrequency * sin(M_PI * (2 * k - 1) / (2 * order)) + 4 * M_PI * M_PI * cutoffFrequency * cutoffFrequency};
-        denominatorPoly.push_back(poly);
-        poly.clear();
+        intermediatePoly = {samplingFrequency * samplingFrequency / ( cutoffFrequency * cutoffFrequency * M_PI * M_PI )  + 2 * samplingFrequency * sin(M_PI * (2 * k - 1) / (2 * order)) / ( M_PI * cutoffFrequency ) + 1, 2 - 2 * samplingFrequency * samplingFrequency / ( M_PI *  M_PI * cutoffFrequency * cutoffFrequency ), samplingFrequency * samplingFrequency / ( cutoffFrequency * cutoffFrequency * M_PI * M_PI )  - 2 * samplingFrequency * sin(M_PI * (2 * k - 1) / (2 * order)) / ( M_PI * cutoffFrequency )+ 1};
+        denominatorCoeff = polyMultiplication(denominatorCoeff, intermediatePoly);
+        intermediatePoly.clear();
 
         // Adaugam polinomul aferent numaratorului filtrului 
-        poly = {1, 2, 1};
-        numeratorPoly.push_back(poly);
-        poly.clear();
+        intermediatePoly = {1, 2, 1};
+        numeratorCoeff = polyMultiplication(numeratorCoeff, intermediatePoly);
+        intermediatePoly.clear();
     }
 
-    //CHECKPOINT II, pana aici stim ca e bine, am calculat formele aferente polinoamelor discretizate, forme ce au fost verificare cu ajutorul MATLAB
+    // normalizam polinoamele (transformam temenul dominant de la numitor in 1)
+    if(numeratorCoeff.size() == 0 || denominatorCoeff.size() == 0 || !normalizeVector(numeratorCoeff, denominatorCoeff[0]))
+    {
+        throw( std::string("Unbable to normalize filter polynomials") );
+    }
 
-    // TODO: Ramane de efectuat inmultirea polinoamelor din cadrul denominatorPoly si numeratorPoly ( convolutia coeficientilor acestora ) si de verificat cu ajutorul Matlab.
-    //       Acesta reprezinta pasul final pentru a obtine numeratorCoeff si denominatorCoeff, urmand a se popula previousUnfilteredSamples si previousFilteredSamples cu
-    //       0-uri in numar de numeratorCoeff.size() si denominatorCoeff.size()
+    normalizeVector(denominatorCoeff, denominatorCoeff[0]);
+
+    // initializare cu 0 a cozilor de valori filtrate si nefiltrate ale semnalului
+    previousUnfilteredSamples.resize(numeratorCoeff.size(),0);
+    previousFilteredSamples.resize(denominatorCoeff.size(),0);
+  
+}
+
+std::vector<double> polyMultiplication(const std::vector<double> & polyA, const std::vector<double> & polyB)
+{
+    if(!polyA.size() || !polyB.size())
+        return std::vector<double>();
+
+    std::vector<double> polyProd(polyA.size() + polyB.size() - 1, 0.0); 
+    for(uint16_t i = 0; i < polyA.size(); i++)
+        for(uint16_t j = 0; j < polyB.size(); j++)
+            polyProd[i+j] += polyA[i] * polyB[j];
+
+    return polyProd;
+}
+
+bool normalizeVector(std::vector<double> & poly, double normalizationFactor)
+{   
+    
+    if(fabs(normalizationFactor) < std::numeric_limits<float>::lowest())
+        return false; 
+
+    for(std::vector<double>::iterator it = poly.begin(); it != poly.end(); it++)
+        *it = *it / normalizationFactor;
+
+    return true;
 }
