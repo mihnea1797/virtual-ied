@@ -4,7 +4,7 @@ ButterworthFilter::~ButterworthFilter()
 {
 }
 
-ButterworthFilter::ButterworthFilter(uint8_t order, float cuttoffFrequency, float samplingFrequency) : order(order), cutoffFrequency(cutoffFrequency), samplingFrequency(samplingFrequency)
+ButterworthFilter::ButterworthFilter(uint8_t order, float cutoffFrequency, float samplingFrequency) : order(order), cutoffFrequency(cutoffFrequency), samplingFrequency(samplingFrequency)
 {
     // Initialization of the numerator and denominator as unitary polynomials ( so that they can be used in polynomial multiplication )
     denominatorCoeff = std::vector<double>({1}); 
