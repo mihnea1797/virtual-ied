@@ -25,7 +25,7 @@ private:
     // Deque used for storing the previous values of the unfiltered ( input ) signal
     std::deque<int32_t> previousUnfilteredSamples;
     // Deque used for storing the previous values of the filtered ( output ) signal
-    std::deque<int32_t> previousFilteredSamples;
+    std::deque<double> previousFilteredSamples;
     /** 
      * Helper method used for performing polynomial multiplication
      * @param polyA Array containing coefficients of the first polynomial ( ordered in ascending order of the powers of the polynomial variable )

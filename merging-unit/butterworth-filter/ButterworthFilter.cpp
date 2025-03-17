@@ -72,8 +72,8 @@ int32_t ButterworthFilter::filter(int32_t inputSample)
 
     int32_t iOutput = static_cast<int32_t>(dOutput);
 
-    // Adding the most recent sample of the signal in the queue of unfiltered values and removing the oldest one
-    previousFilteredSamples.emplace_back(iOutput);
+    // Adding the most recent sample of the signal in the queue of filtered values and removing the oldest one
+    previousFilteredSamples.emplace_back(dOutput);
     previousFilteredSamples.pop_front();
     
     return iOutput;
