@@ -1,5 +1,10 @@
 #include "SampledValuesSubscriberWrapper.hpp"
 
+// Static member initialization
+RmsComputationObject SampledValuesSubscriberWrapper::rmsObject = RmsComputationObject((uint8_t)80,(double)537401.187777);
+ButterworthFilter SampledValuesSubscriberWrapper::butterFilter = ButterworthFilter((uint8_t)1,(float)200,(float)4000);
+
+
 SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &settings)
 {
     ParseSettings(settings);
@@ -54,7 +59,7 @@ void SampledValuesSubscriberWrapper::Start()
 
 void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu)
 {
-    static RmsComputationObject rmsObject;
+    static constexpr double sqrt2 = 1.4142135623730951;
     double rms;
 
     ListenerParameters *params = static_cast<ListenerParameters *>(parameter);
@@ -93,12 +98,22 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
         if (params->goosePublishMessageFunction)
         {
             printf("Checking rms Value...\n");
-            if (rms > params->threshold)
+            if (rms * sqrt2> params->threshold)
             {
                 (*(params->goosePublishMessageFunction))(true);
             }
         }
     }
+}
+
+void SampledValuesSubscriberWrapper::setRmsObject(const RmsComputationObject & rmsObjectReference)
+{
+    rmsObject = rmsObjectReference;
+}
+
+void SampledValuesSubscriberWrapper::setButterFilter(const ButterworthFilter & butterFilterReference)
+{
+    butterFilter = butterFilterReference;
 }
 
 void SampledValuesSubscriberWrapper::Print()

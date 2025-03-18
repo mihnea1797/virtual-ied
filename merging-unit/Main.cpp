@@ -1,5 +1,7 @@
 #include "goose-publisher/GoosePublisherWrapper.hpp"
 #include "sv-subscriber/SampledValuesSubscriberWrapper.hpp"
+#include "ButterworthFilter.hpp"
+#include "RmsComputationObject.hpp"
 #include <memory>
 #include <iostream>
 #include <fstream>
@@ -19,9 +21,13 @@ int main()
 
     nlohmann::json gooseSettings = config["gooseSettings"];
     nlohmann::json sampledValuesSettings = config["sampledValuesSettings"];
+    nlohmann::json signalProperties = config["signalProperties"];
+    nlohmann::json filterProperties = config["filterProperties"];
+    SampledValuesSubscriberWrapper::setRmsObject(RmsComputationObject(signalProperties));
+    SampledValuesSubscriberWrapper::setButterFilter(ButterworthFilter(filterProperties));
 
     std::unique_ptr<GoosePublisherWrapper> goosePublisher = std::make_unique<GoosePublisherWrapper>(gooseSettings);
-    std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings);
+    std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings); 
 
     goosePublisher->Print();
     sampledValuesSubscriber->Print();

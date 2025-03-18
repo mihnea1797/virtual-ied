@@ -54,6 +54,14 @@ ButterworthFilter::ButterworthFilter(uint8_t order, float cutoffFrequency, float
     previousFilteredSamples.resize(denominatorCoeff.size(),0); 
 }
 
+ButterworthFilter::ButterworthFilter(const nlohmann::json & filterProperties)
+{
+    uint8_t order = filterProperties.at("order");
+    float cutoffFrequency = filterProperties.at("cutoffFrequency");
+    float samplingFrequency = filterProperties.at("samplingFrequency");
+    *this = ButterworthFilter(order,cutoffFrequency,samplingFrequency);
+}
+
 int32_t ButterworthFilter::filter(int32_t inputSample)
 {
     // Adding the most recent sample of the signal in the queue of unfiltered values and removing the oldest one

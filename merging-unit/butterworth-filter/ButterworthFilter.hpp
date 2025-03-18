@@ -7,6 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <string>
+#include <nlohmann/json.hpp>
 
 class ButterworthFilter
 {
@@ -45,6 +46,7 @@ private:
 public:
     ButterworthFilter() = delete;
     ButterworthFilter(uint8_t order, float cuttoffFrequency, float samplingFrequency);
+    ButterworthFilter(const nlohmann::json & filterProperties);
     ~ButterworthFilter();
     /**
      * Method used for data filtering
