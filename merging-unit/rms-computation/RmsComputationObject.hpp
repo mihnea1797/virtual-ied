@@ -40,7 +40,12 @@ public:
     RmsComputationObject(const nlohmann::json & signalProperties);
     RmsComputationObject(uint8_t samplesPerPeriod, double scalingConstant);
     ~RmsComputationObject();
-    double computeValue(int32_t value);
+    /**
+     * Method used for updating the RMS value based on the incoming sample
+     * @param inputSample Incoming sample of the input signal
+     * @return Current RMS value
+     */
+    double computeValue(int32_t inputSample);
 };
 
 #endif

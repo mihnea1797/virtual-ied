@@ -19,10 +19,10 @@ RmsComputationObject::~RmsComputationObject()
 {
 }
 
-double RmsComputationObject::computeValue(int32_t value)
+double RmsComputationObject::computeValue(int32_t inputSample)
 {
 
-    uint64_t voltageUnscaled = std::abs(value);
+    uint64_t voltageUnscaled = std::abs(inputSample);
 
     // for the first samplesPerPeriod - 1 samples, the RMS value should be kept at 0
     if (sampleNumber <= samplesPerPeriod - 2)
