@@ -23,8 +23,10 @@ int main()
     nlohmann::json sampledValuesSettings = config["sampledValuesSettings"];
     nlohmann::json signalProperties = config["signalProperties"];
     nlohmann::json filterProperties = config["filterProperties"];
+    nlohmann::json dataFormat = config["dataFormat"];
     SampledValuesSubscriberWrapper::setRmsObject(RmsComputationObject(signalProperties));
     SampledValuesSubscriberWrapper::setButterFilter(ButterworthFilter(filterProperties));
+    SampledValuesSubscriberWrapper::setDataFormat(dataFormat);
 
     std::unique_ptr<GoosePublisherWrapper> goosePublisher = std::make_unique<GoosePublisherWrapper>(gooseSettings);
     std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings); 

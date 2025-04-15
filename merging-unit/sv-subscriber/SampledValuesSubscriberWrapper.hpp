@@ -11,6 +11,14 @@ extern "C"
 #include "RmsComputationObject.hpp"
 #include "ButterworthFilter.hpp"
 
+enum class DataFormat
+{
+    clusterVI,
+    clusterIV,
+    pairVI,
+    pairIV
+};
+
 struct ListenerParameters
 {
     double threshold;
@@ -33,6 +41,8 @@ private:
 
     static RmsComputationObject rmsObject;
     static ButterworthFilter butterFilter;
+    static DataFormat format;
+    static bool parseSVData(std::vector<int32_t> & voltageMeasurements, std::vector<int32_t> & currentMeasurements, const SVSubscriber_ASDU & asdu);
     static void SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu);
     void ParseSettings(const nlohmann::json &settings);
 
@@ -42,6 +52,7 @@ public:
     
     static void setRmsObject(const RmsComputationObject & rmsObjectReference);
     static void setButterFilter(const ButterworthFilter & butterFilterReference);
+    static void setDataFormat(const nlohmann::json & dataFormat);
     void Start();
     void SetListener(std::function<void(bool)> goosePublishMessageFunction);
     void Print();
