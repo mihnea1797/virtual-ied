@@ -2,11 +2,11 @@ import {
     getAllGooseSettings
 } from "@/lib/api/gooseSettings/queries";
 import { timestamps } from "@/lib/utils";
-import { gooseSettingSchema } from "@/zodAutoGenSchemas";
+import { GooseSettingSchema } from "@/zodAutoGenSchemas";
 import { z } from "zod";
 
 // Schema for gooseSettings - used to validate API requests
-const baseSchema = gooseSettingSchema.omit(timestamps);
+const baseSchema = GooseSettingSchema.omit(timestamps);
 
 export const insertGooseSettingSchema = baseSchema.omit({ id: true });
 export const insertGooseSettingParams = baseSchema
@@ -38,7 +38,7 @@ export const updateGooseSettingParams = updateGooseSettingSchema.extend({
 export const gooseSettingIdSchema = baseSchema.pick({ id: true });
 
 // Types for gooseSettings - used to type API request params and within Components
-export type GooseSettings = z.infer<typeof gooseSettingSchema>;
+export type GooseSettings = z.infer<typeof GooseSettingSchema>;
 export type NewGooseSetting = z.infer<typeof insertGooseSettingSchema>;
 export type NewGooseSettingParams = z.infer<typeof insertGooseSettingParams>;
 export type UpdateGooseSettingParams = z.infer<typeof updateGooseSettingParams>;

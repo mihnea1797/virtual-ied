@@ -2,11 +2,11 @@ import {
     getAllSampledValuesSettings
 } from "@/lib/api/sampledValuesSettings/queries";
 import { timestamps } from "@/lib/utils";
-import { sampledValuesSettingSchema } from "@/zodAutoGenSchemas";
+import { SampledValuesSettingSchema } from "@/zodAutoGenSchemas";
 import { z } from "zod";
 
 // Schema for sampledValuesSettings - used to validate API requests
-const baseSchema = sampledValuesSettingSchema.omit(timestamps);
+const baseSchema = SampledValuesSettingSchema.omit(timestamps);
 
 export const insertSampledValuesSettingSchema = baseSchema.omit({ id: true });
 export const insertSampledValuesSettingParams = baseSchema
@@ -29,7 +29,7 @@ export const updateSampledValuesSettingParams =
 export const sampledValuesSettingIdSchema = baseSchema.pick({ id: true });
 
 // Types for sampledValuesSettings - used to type API request params and within Components
-export type SampledValuesSettings = z.infer<typeof sampledValuesSettingSchema>;
+export type SampledValuesSettings = z.infer<typeof SampledValuesSettingSchema>;
 export type NewSampledValuesSetting = z.infer<
     typeof insertSampledValuesSettingSchema
 >;

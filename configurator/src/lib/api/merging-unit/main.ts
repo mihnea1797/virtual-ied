@@ -37,7 +37,7 @@ const writeConfigToFile = async () => {
     };
 
     ensureDirectoryExists(configDirPath);
-    fs.writeFileSync(configFilePath, JSON.stringify(config, null, 2));
+    // fs.writeFileSync(configFilePath, JSON.stringify(config, null, 2));
 };
 
 export const startMergingUnit = async () => {

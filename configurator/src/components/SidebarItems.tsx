@@ -9,6 +9,7 @@ import { defaultLinks } from "@/config/nav";
 import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { useState } from "react";
 
 export interface SidebarLink {
     title: string;
@@ -17,6 +18,7 @@ export interface SidebarLink {
 }
 
 const SidebarItems = () => {
+    const [startMergingUnitDisabled, setStartMergingUnitDisabled] = useState(false);
     const { mutate: startMergingUnit, isLoading: isMergingUnitStarting } =
         trpc.gooseSettings.startMergingUnit.useMutation({
             onSuccess: (res) => onSuccess("create"),
@@ -43,19 +45,26 @@ const SidebarItems = () => {
         <>
             <SidebarLinkGroup links={defaultLinks} />
             <Button
-                onClick={() => startMergingUnit()}
-                disabled={isMergingUnitStarting}
-                className="w-full mt-4"
+                //  onClick={() => startMergingUnit()}
+                // disabled={isMergingUnitStarting}
+                onClick={() => {
+                    if(startMergingUnitDisabled)
+                        stopMergingUnit()
+                    else
+                        startMergingUnit()
+                    setStartMergingUnitDisabled(!startMergingUnitDisabled);
+                    }}
+                className={`w-full mt-4 ${startMergingUnitDisabled ? "bg-red-500 hover:bg-red-500" : ""}`}
             >
-                Start Merging Unit
+                {startMergingUnitDisabled ? "Stop Merging Unit" : "Start Merging Unit"}
             </Button>
-            <Button
-                onClick={() => stopMergingUnit()}
+            {/* <Button
+                // onClick={() => stopMergingUnit()}
                 disabled={isMergingUnitStopping}
                 className="w-full mt-4"
             >
                 Stop Merging Unit
-            </Button>
+            </Button> */}
         </>
     );
 };
