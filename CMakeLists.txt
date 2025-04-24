@@ -56,6 +56,7 @@ set(HEADERS
 # Adding library subdirectories
 add_subdirectory(${CMAKE_SOURCE_DIR}/merging-unit/rms-computation)
 add_subdirectory(${CMAKE_SOURCE_DIR}/merging-unit/butterworth-filter)
+add_subdirectory(${CMAKE_SOURCE_DIR}/merging-unit/frequency-tracking)
 
 # Set the output directory for the binary
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /opt/virtual-merging-unit)
@@ -68,6 +69,7 @@ set(SHARED_LIBRARIES
     ${LIBIEC61850_LIBRARY}
     rms-computation
     butterworth-filter
+    frequency-tracking
 )
 # Link the shared libraries
 target_link_libraries(merging-unit ${SHARED_LIBRARIES})
@@ -77,6 +79,7 @@ set(INCLUDE_DIRECTORIES
     ${LIBIEC61850_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/merging-unit/rms-computation
     ${CMAKE_SOURCE_DIR}/merging-unit/butterworth-filter
+    ${CMAKE_SOURCE_DIR}/merging-unit/frequency-tracking
 )
 
 # Ensure the include directories are available to the merging-unit project
