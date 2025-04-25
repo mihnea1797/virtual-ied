@@ -3,6 +3,7 @@
 // Static member initialization
 RmsComputationObject SampledValuesSubscriberWrapper::rmsObject = RmsComputationObject((uint8_t)80,(double)537401.187777);
 ButterworthFilter SampledValuesSubscriberWrapper::butterFilter = ButterworthFilter((uint8_t)1,(float)200,(float)4000);
+FrequencyTracking SampledValuesSubscriberWrapper::frequencyTracker = FrequencyTracking();
 DataFormat SampledValuesSubscriberWrapper::format = DataFormat::pairVI;
 
 SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &settings)
@@ -181,6 +182,8 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
 {
     static constexpr double sqrt2 = 1.4142135623730951;
 
+    std::chrono::steady_clock::time_point sampleTimeStamp = std::chrono::steady_clock::now();
+
     ListenerParameters *params = static_cast<ListenerParameters *>(parameter);
 
     const char *svID = SVSubscriber_ASDU_getSvId(asdu);
@@ -190,7 +193,9 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
 
     if( parseSVData(voltageMeasurements, currentMeasurements, asdu) )
     {
-        double rms = rmsObject.computeValue(voltageMeasurements[3]);
+        // int32_t filteredValue = butterFilter.filter(voltageMeasurements[1])
+        // double rms = rmsObject.computeValue(filteredValue);
+        double rms = rmsObject.computeValue(voltageMeasurements[1]);
         if (params->goosePublishMessageFunction)
         {
             printf("Checking rms Value...\n");
@@ -199,6 +204,8 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                 (*(params->goosePublishMessageFunction))(true);
             }
         }
+        // double estimatedFrequency = frequencyTracker.frequencyEstimation(filteredValue, sampleTimeStamp);
+        double estimatedFrequency = frequencyTracker.frequencyEstimation(voltageMeasurements[1], sampleTimeStamp);
     }
 }
 

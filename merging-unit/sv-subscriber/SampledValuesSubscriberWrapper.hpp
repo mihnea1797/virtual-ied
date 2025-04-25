@@ -10,6 +10,7 @@ extern "C"
 #include <fstream>
 #include "RmsComputationObject.hpp"
 #include "ButterworthFilter.hpp"
+#include "FrequencyTracking.hpp"
 
 enum class DataFormat
 {
@@ -41,6 +42,7 @@ private:
 
     static RmsComputationObject rmsObject;
     static ButterworthFilter butterFilter;
+    static FrequencyTracking frequencyTracker;
     static DataFormat format;
     static bool parseSVData(std::vector<int32_t> & voltageMeasurements, std::vector<int32_t> & currentMeasurements, const SVSubscriber_ASDU & asdu);
     static void SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu);
