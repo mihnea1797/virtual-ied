@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useState, useEffect } from 'react'
-import { Button } from './ui/button'
+import { Button } from './button'
 import { trpc } from '@/lib/trpc/client'
 import { NewGooseSettingParams } from '@/lib/db/schema/gooseSettings'
 import { toast } from 'sonner'

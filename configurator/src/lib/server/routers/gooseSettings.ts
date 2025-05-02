@@ -8,7 +8,7 @@ import {
     getGooseSettingById,
     getGooseSettings,
 } from "@/lib/api/gooseSettings/queries";
-import { startMergingUnit, stopMergingUnit } from "@/lib/api/merging-unit/main";
+import { isMergingUnitRunning, startMergingUnit, stopMergingUnit } from "@/lib/api/merging-unit/main";
 import {
     gooseSettingIdSchema,
     insertGooseSettingParams,
@@ -44,11 +44,14 @@ export const gooseSettingsRouter = router({
             return deleteGooseSetting(input.id);
         }),
     startMergingUnit: publicProcedure
-    .input((x) => x) 
-    .mutation(async ({ input }) => {
-    return startMergingUnit(input);
-    }),
+        .input((x) => x)
+        .mutation(async ({ input }) => {
+            return startMergingUnit(input);
+        }),
     stopMergingUnit: publicProcedure.mutation(async () => {
         return stopMergingUnit();
     }),
+    getMergingUnitStatus: publicProcedure.query(() => {
+        return { isRunning: isMergingUnitRunning() };
+      }),
 });

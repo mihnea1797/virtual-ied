@@ -1,4 +1,4 @@
-import AddConfigFileButton from "@/components/AddConfigFileButton";
+import AddConfigFileButton from "@/components/ui/AddConfigFileButton";
 import GooseSettingsForm from "@/components/gooseSettings/GooseSettingsForm";
 import SampledValuesSettingsForm from "@/components/sampledValuesSettings/SampledValuesSettingForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

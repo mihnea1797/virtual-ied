@@ -1,5 +1,5 @@
 import { db } from "@/lib/db/index";
-import { spawn, ChildProcessWithoutNullStreams } from "child_process";
+import { spawn, ChildProcessWithoutNullStreams, spawnSync } from "child_process";
 import { promises as fsPromises } from "fs";
 import fsSync from "fs"; // pentru existsSync, mkdirSync
 import path from "path";
@@ -73,3 +73,8 @@ export const stopMergingUnit = async () => {
         child.kill("SIGTERM");
     }
 };
+
+export function isMergingUnitRunning(): boolean {
+    const { status } = spawnSync("pgrep", ["-x", "merging-unit"]);
+    return status === 0;
+  }

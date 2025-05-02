@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc/client";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { useRef, useState } from "react";
+import MergingUnitStatus from "./ui/MergingUnitStatus";
 
 export interface SidebarLink {
     title: string;
@@ -89,6 +90,7 @@ const SidebarItems = () => {
                     ref={inputRef}
                     onChange={handleFileChange}
                 />
+                <MergingUnitStatus />
                 <Button
                     type="button"
                     onClick={handleButtonClick}
@@ -111,7 +113,7 @@ const SidebarItems = () => {
                       if (fileContent) {
                         startMergingUnit(fileContent);
                       } else {
-                        alert("Trebuie să adaugi un fișier înainte de a porni vIED!");
+                        startMergingUnit(null);
                         return;
                       }
                     }
@@ -119,7 +121,7 @@ const SidebarItems = () => {
                   }}
                 className={`w-full mt-4 ${startMergingUnitDisabled ? "bg-red-500 hover:bg-red-500" : ""}`}
             >
-                {startMergingUnitDisabled ? "Stop vIED" : "Start vIED"}
+                {startMergingUnitDisabled ? "Stop vIED" : `Start${isMergingUnitStarting ? 'ing' : ''} vIED`}
             </Button>
             {/* <Button
                 // onClick={() => stopMergingUnit()}
