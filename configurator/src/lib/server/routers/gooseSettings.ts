@@ -43,8 +43,10 @@ export const gooseSettingsRouter = router({
         .mutation(async ({ input }) => {
             return deleteGooseSetting(input.id);
         }),
-    startMergingUnit: publicProcedure.mutation(async () => {
-        return startMergingUnit();
+    startMergingUnit: publicProcedure
+    .input((x) => x) 
+    .mutation(async ({ input }) => {
+    return startMergingUnit(input);
     }),
     stopMergingUnit: publicProcedure.mutation(async () => {
         return stopMergingUnit();

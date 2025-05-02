@@ -5,7 +5,7 @@ export const defaultLinks: SidebarLink[] = [
     { href: "/dashboard", title: "Home", icon: HomeIcon },
     {
         href: "/merging-unit-settings",
-        title: "Merging Unit Settings",
+        title: "vIED Settings",
         icon: Globe,
     },
 ];

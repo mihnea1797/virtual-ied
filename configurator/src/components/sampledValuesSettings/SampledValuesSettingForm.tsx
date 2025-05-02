@@ -106,11 +106,18 @@ export default function SampledValuesSettingsForm({
             createSampledValuesSetting(values);
         }
     };
+
+    const handleRemoveSettings = ()=>{
+        if (!sampledValuesSettings?.id) return;
+        deleteSampledValuesSetting({ id: sampledValuesSettings.id });
+    }
     return (
-        <Form {...form}>
+        <div className="flex flex-col w-5xl">
+        <h2 className="font-bold text-lg">Sample Values</h2>
+        <Form {...form}> 
             <form
                 onSubmit={form.handleSubmit(handleSubmit)}
-                className="flex flex-col gap-3 w-1/4"
+                className="flex flex-col gap-3 "
             >
                 <FormField
                     control={form.control}
@@ -212,7 +219,16 @@ export default function SampledValuesSettingsForm({
                 >
                     {`Sav${isUpdating ? "ing..." : "e"}`}
                 </Button>
+                <Button
+                    type="button"
+                    className="mr-1 bg-red-500 hover:bg-red-400 text-white"
+                    onClick={handleRemoveSettings}
+                    disabled={isCreating || isUpdating}
+                >
+                    {`Delet${isDeleting ? "ing..." : "e"}`}
+                </Button>
             </form>
         </Form>
+        </div>
     );
 }

@@ -2,6 +2,8 @@ import { AuthSession, getUserAuth } from "@/lib/auth/utils";
 import Link from "next/link";
 import SidebarItems from "./SidebarItems";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+import logo from '../../public/logo_epg.png'
+import Image from "next/image";
 
 export default async function Sidebar() {
     const session = await getUserAuth();
@@ -11,7 +13,13 @@ export default async function Sidebar() {
         <aside className="min-w-52 bg-muted hidden md:block p-4 pt-8 border-r border-border shadow-inner">
             <div className="flex flex-col justify-between h-full">
                 <div className="space-y-4">
-                    <h3 className="text-lg font-semibold ml-4">Logo</h3>
+                    {/* <h3 className="text-lg font-semibold ml-4">Logo</h3> */}
+                    <Image
+                        src={logo}
+                        alt="EPG Logo"
+                        className="w-20"
+                        />
+                    {/* <h1 className="font-extrabold text-2xl">vIED</h1> */}
                     <SidebarItems />
                 </div>
                 <UserDetails session={session} />

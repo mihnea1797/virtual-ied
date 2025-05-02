@@ -1,16 +1,17 @@
 import { db } from "@/lib/db/index";
-import { spawn } from "child_process";
-import fs from "fs";
+import { spawn, ChildProcessWithoutNullStreams } from "child_process";
+import { promises as fsPromises } from "fs";
+import fsSync from "fs"; // pentru existsSync, mkdirSync
 import path from "path";
 
-let child: any = undefined;
+let child: ChildProcessWithoutNullStreams | undefined = undefined;
 
 const configFilePath = "/opt/virtual-merging-unit/config.json";
 const configDirPath = path.dirname(configFilePath);
 
 const ensureDirectoryExists = (dir: string) => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+    if (!fsSync.existsSync(dir)) {
+        fsSync.mkdirSync(dir, { recursive: true });
     }
 };
 
@@ -19,49 +20,50 @@ const removeUnwantedFields = (settings: any) => {
     return filteredSettings;
 };
 
-const writeConfigToFile = async () => {
-    const gooseSettings = await db.gooseSetting.findFirst();
-    const sampledValuesSettings = await db.sampledValuesSetting.findFirst();
+const writeConfigToFile = async (configFile: any = null) => {
+    let config;
+    if(!configFile)
+    {
+        const gooseSettings = await db.gooseSetting.findFirst();
+        const sampledValuesSettings = await db.sampledValuesSetting.findFirst();
 
-    if (!gooseSettings) {
-        throw new Error("No goose settings found");
+        if (!gooseSettings) {
+            throw new Error("No goose settings found");
+        }
+
+        if (!sampledValuesSettings) {
+            throw new Error("No sampled values settings found");
+        }
+
+        config= {
+            gooseSettings: removeUnwantedFields(gooseSettings),
+            sampledValuesSettings: removeUnwantedFields(sampledValuesSettings),
+        };
     }
-
-    if (!sampledValuesSettings) {
-        throw new Error("No sampled values settings found");
-    }
-
-    const config = {
-        gooseSettings: removeUnwantedFields(gooseSettings),
-        sampledValuesSettings: removeUnwantedFields(sampledValuesSettings),
-    };
-
     ensureDirectoryExists(configDirPath);
-    // fs.writeFileSync(configFilePath, JSON.stringify(config, null, 2));
+    await fsPromises.writeFile(configFilePath, JSON.stringify(configFile ? configFile : config, null, 2));
 };
 
-export const startMergingUnit = async () => {
-    await writeConfigToFile();
+export const startMergingUnit = async (configFile: any = null) => {
+    await writeConfigToFile(configFile);
 
     const command = "/opt/virtual-merging-unit/merging-unit";
 
-    // console log the command with arguments
     console.log(`Starting merging unit with command: ${command}`);
 
-    // Spawn the new process
     child = spawn(command, [], {
         detached: false,
     });
 
-    child.stdout.on("data", (data: string) => {
-        console.log(`stdout: ${data}`);
+    child.stdout.on("data", (data: Buffer) => {
+        console.log(`stdout: ${data.toString()}`);
     });
 
-    child.stderr.on("data", (data: string) => {
-        console.error(`stderr: ${data}`);
+    child.stderr.on("data", (data: Buffer) => {
+        console.error(`stderr: ${data.toString()}`);
     });
 
-    child.on("close", (code: any) => {
+    child.on("close", (code: number | null) => {
         console.log(`child process exited with code ${code}`);
     });
 };

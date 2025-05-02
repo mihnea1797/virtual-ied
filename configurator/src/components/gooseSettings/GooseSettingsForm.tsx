@@ -99,6 +99,12 @@ export default function GooseSettingsForm({
             onSuccess: (res) => onSuccess("update"),
             onError: (err) => onError("update", { error: err.message }),
         });
+    
+    const { mutate: deleteGooseSetting, isLoading: isDeleting } =
+    trpc.gooseSettings.deleteGooseSetting.useMutation({
+        onSuccess: (res) => onSuccess("delete"),
+        onError: (err) => onError("delete", { error: err.message }),
+    });
 
     const handleSubmit = (values: NewGooseSettingParams) => {
         if (editing) {
@@ -107,11 +113,18 @@ export default function GooseSettingsForm({
             createGooseSetting(values);
         }
     };
+
+    const handleRemoveSettings=()=>{
+        if (!gooseSettings?.id) return;
+        deleteGooseSetting({ id: gooseSettings.id });
+    }
     return (
+        <div className="flex flex-col justify-start w-5xl">
+        <h2 className="font-bold text-lg">Goose</h2>
         <Form {...form}>
             <form
                 onSubmit={form.handleSubmit(handleSubmit)}
-                className="flex flex-col gap-3 w-1/4"
+                className="flex flex-col gap-3 "
             >
                 <FormField
                     control={form.control}
@@ -351,7 +364,16 @@ export default function GooseSettingsForm({
                 >
                     {`Sav${isUpdating ? "ing..." : "e"}`}
                 </Button>
+                <Button
+                    type="button"
+                    className="mr-1 bg-red-500 hover:bg-red-400 text-white"
+                    onClick={handleRemoveSettings}
+                    disabled={isCreating || isUpdating}
+                >
+                    {`Delet${isDeleting ? "ing..." : "e"}`}
+                </Button>
             </form>
         </Form>
+        </div>
     );
 }
