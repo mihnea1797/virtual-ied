@@ -10,7 +10,7 @@ import type { Prisma } from '@prisma/client';
 // ENUMS
 /////////////////////////////////////////
 
-export const TransactionIsolationLevelSchema = z.enum(['Serializable']);
+export const TransactionIsolationLevelSchema = z.enum(['ReadUncommitted','ReadCommitted','RepeatableRead','Serializable']);
 
 export const UserScalarFieldEnumSchema = z.enum(['id','email','hashedPassword','name']);
 
@@ -20,7 +20,11 @@ export const GooseSettingScalarFieldEnumSchema = z.enum(['id','vlanPriority','vl
 
 export const SampledValuesSettingScalarFieldEnumSchema = z.enum(['id','appId','ethernetInterface','dstAddressCheck','threshold','createdAt','updatedAt']);
 
+export const SampledValueScalarFieldEnumSchema = z.enum(['id','time','value','filtered']);
+
 export const SortOrderSchema = z.enum(['asc','desc']);
+
+export const QueryModeSchema = z.enum(['default','insensitive']);
 
 export const NullsOrderSchema = z.enum(['first','last']);
 /////////////////////////////////////////
@@ -120,6 +124,19 @@ export const SampledValuesSettingSchema = z.object({
 export type SampledValuesSetting = z.infer<typeof SampledValuesSettingSchema>
 
 /////////////////////////////////////////
+// SAMPLED VALUE SCHEMA
+/////////////////////////////////////////
+
+export const SampledValueSchema = z.object({
+  id: z.number().int(),
+  time: z.coerce.date(),
+  value: z.number(),
+  filtered: z.boolean(),
+})
+
+export type SampledValue = z.infer<typeof SampledValueSchema>
+
+/////////////////////////////////////////
 // SELECT & INCLUDE
 /////////////////////////////////////////
 
@@ -205,6 +222,16 @@ export const SampledValuesSettingSelectSchema: z.ZodType<Prisma.SampledValuesSet
   threshold: z.boolean().optional(),
   createdAt: z.boolean().optional(),
   updatedAt: z.boolean().optional(),
+}).strict()
+
+// SAMPLED VALUE
+//------------------------------------------------------
+
+export const SampledValueSelectSchema: z.ZodType<Prisma.SampledValueSelect> = z.object({
+  id: z.boolean().optional(),
+  time: z.boolean().optional(),
+  value: z.boolean().optional(),
+  filtered: z.boolean().optional(),
 }).strict()
 
 
@@ -499,6 +526,58 @@ export const SampledValuesSettingScalarWhereWithAggregatesInputSchema: z.ZodType
   threshold: z.union([ z.lazy(() => FloatWithAggregatesFilterSchema),z.number() ]).optional(),
   createdAt: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema),z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema),z.coerce.date() ]).optional(),
+}).strict();
+
+export const SampledValueWhereInputSchema: z.ZodType<Prisma.SampledValueWhereInput> = z.object({
+  AND: z.union([ z.lazy(() => SampledValueWhereInputSchema),z.lazy(() => SampledValueWhereInputSchema).array() ]).optional(),
+  OR: z.lazy(() => SampledValueWhereInputSchema).array().optional(),
+  NOT: z.union([ z.lazy(() => SampledValueWhereInputSchema),z.lazy(() => SampledValueWhereInputSchema).array() ]).optional(),
+  id: z.union([ z.lazy(() => IntFilterSchema),z.number() ]).optional(),
+  time: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
+  value: z.union([ z.lazy(() => FloatFilterSchema),z.number() ]).optional(),
+  filtered: z.union([ z.lazy(() => BoolFilterSchema),z.boolean() ]).optional(),
+}).strict();
+
+export const SampledValueOrderByWithRelationInputSchema: z.ZodType<Prisma.SampledValueOrderByWithRelationInput> = z.object({
+  id: z.lazy(() => SortOrderSchema).optional(),
+  time: z.lazy(() => SortOrderSchema).optional(),
+  value: z.lazy(() => SortOrderSchema).optional(),
+  filtered: z.lazy(() => SortOrderSchema).optional()
+}).strict();
+
+export const SampledValueWhereUniqueInputSchema: z.ZodType<Prisma.SampledValueWhereUniqueInput> = z.object({
+  id: z.number().int()
+})
+.and(z.object({
+  id: z.number().int().optional(),
+  AND: z.union([ z.lazy(() => SampledValueWhereInputSchema),z.lazy(() => SampledValueWhereInputSchema).array() ]).optional(),
+  OR: z.lazy(() => SampledValueWhereInputSchema).array().optional(),
+  NOT: z.union([ z.lazy(() => SampledValueWhereInputSchema),z.lazy(() => SampledValueWhereInputSchema).array() ]).optional(),
+  time: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
+  value: z.union([ z.lazy(() => FloatFilterSchema),z.number() ]).optional(),
+  filtered: z.union([ z.lazy(() => BoolFilterSchema),z.boolean() ]).optional(),
+}).strict());
+
+export const SampledValueOrderByWithAggregationInputSchema: z.ZodType<Prisma.SampledValueOrderByWithAggregationInput> = z.object({
+  id: z.lazy(() => SortOrderSchema).optional(),
+  time: z.lazy(() => SortOrderSchema).optional(),
+  value: z.lazy(() => SortOrderSchema).optional(),
+  filtered: z.lazy(() => SortOrderSchema).optional(),
+  _count: z.lazy(() => SampledValueCountOrderByAggregateInputSchema).optional(),
+  _avg: z.lazy(() => SampledValueAvgOrderByAggregateInputSchema).optional(),
+  _max: z.lazy(() => SampledValueMaxOrderByAggregateInputSchema).optional(),
+  _min: z.lazy(() => SampledValueMinOrderByAggregateInputSchema).optional(),
+  _sum: z.lazy(() => SampledValueSumOrderByAggregateInputSchema).optional()
+}).strict();
+
+export const SampledValueScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.SampledValueScalarWhereWithAggregatesInput> = z.object({
+  AND: z.union([ z.lazy(() => SampledValueScalarWhereWithAggregatesInputSchema),z.lazy(() => SampledValueScalarWhereWithAggregatesInputSchema).array() ]).optional(),
+  OR: z.lazy(() => SampledValueScalarWhereWithAggregatesInputSchema).array().optional(),
+  NOT: z.union([ z.lazy(() => SampledValueScalarWhereWithAggregatesInputSchema),z.lazy(() => SampledValueScalarWhereWithAggregatesInputSchema).array() ]).optional(),
+  id: z.union([ z.lazy(() => IntWithAggregatesFilterSchema),z.number() ]).optional(),
+  time: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema),z.coerce.date() ]).optional(),
+  value: z.union([ z.lazy(() => FloatWithAggregatesFilterSchema),z.number() ]).optional(),
+  filtered: z.union([ z.lazy(() => BoolWithAggregatesFilterSchema),z.boolean() ]).optional(),
 }).strict();
 
 export const UserCreateInputSchema: z.ZodType<Prisma.UserCreateInput> = z.object({
@@ -798,6 +877,52 @@ export const SampledValuesSettingUncheckedUpdateManyInputSchema: z.ZodType<Prism
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
 }).strict();
 
+export const SampledValueCreateInputSchema: z.ZodType<Prisma.SampledValueCreateInput> = z.object({
+  time: z.coerce.date(),
+  value: z.number(),
+  filtered: z.boolean().optional()
+}).strict();
+
+export const SampledValueUncheckedCreateInputSchema: z.ZodType<Prisma.SampledValueUncheckedCreateInput> = z.object({
+  id: z.number().int().optional(),
+  time: z.coerce.date(),
+  value: z.number(),
+  filtered: z.boolean().optional()
+}).strict();
+
+export const SampledValueUpdateInputSchema: z.ZodType<Prisma.SampledValueUpdateInput> = z.object({
+  time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
+  value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
+  filtered: z.union([ z.boolean(),z.lazy(() => BoolFieldUpdateOperationsInputSchema) ]).optional(),
+}).strict();
+
+export const SampledValueUncheckedUpdateInputSchema: z.ZodType<Prisma.SampledValueUncheckedUpdateInput> = z.object({
+  id: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
+  time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
+  value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
+  filtered: z.union([ z.boolean(),z.lazy(() => BoolFieldUpdateOperationsInputSchema) ]).optional(),
+}).strict();
+
+export const SampledValueCreateManyInputSchema: z.ZodType<Prisma.SampledValueCreateManyInput> = z.object({
+  id: z.number().int().optional(),
+  time: z.coerce.date(),
+  value: z.number(),
+  filtered: z.boolean().optional()
+}).strict();
+
+export const SampledValueUpdateManyMutationInputSchema: z.ZodType<Prisma.SampledValueUpdateManyMutationInput> = z.object({
+  time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
+  value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
+  filtered: z.union([ z.boolean(),z.lazy(() => BoolFieldUpdateOperationsInputSchema) ]).optional(),
+}).strict();
+
+export const SampledValueUncheckedUpdateManyInputSchema: z.ZodType<Prisma.SampledValueUncheckedUpdateManyInput> = z.object({
+  id: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
+  time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
+  value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
+  filtered: z.union([ z.boolean(),z.lazy(() => BoolFieldUpdateOperationsInputSchema) ]).optional(),
+}).strict();
+
 export const StringFilterSchema: z.ZodType<Prisma.StringFilter> = z.object({
   equals: z.string().optional(),
   in: z.string().array().optional(),
@@ -809,6 +934,7 @@ export const StringFilterSchema: z.ZodType<Prisma.StringFilter> = z.object({
   contains: z.string().optional(),
   startsWith: z.string().optional(),
   endsWith: z.string().optional(),
+  mode: z.lazy(() => QueryModeSchema).optional(),
   not: z.union([ z.string(),z.lazy(() => NestedStringFilterSchema) ]).optional(),
 }).strict();
 
@@ -823,6 +949,7 @@ export const StringNullableFilterSchema: z.ZodType<Prisma.StringNullableFilter> 
   contains: z.string().optional(),
   startsWith: z.string().optional(),
   endsWith: z.string().optional(),
+  mode: z.lazy(() => QueryModeSchema).optional(),
   not: z.union([ z.string(),z.lazy(() => NestedStringNullableFilterSchema) ]).optional().nullable(),
 }).strict();
 
@@ -873,6 +1000,7 @@ export const StringWithAggregatesFilterSchema: z.ZodType<Prisma.StringWithAggreg
   contains: z.string().optional(),
   startsWith: z.string().optional(),
   endsWith: z.string().optional(),
+  mode: z.lazy(() => QueryModeSchema).optional(),
   not: z.union([ z.string(),z.lazy(() => NestedStringWithAggregatesFilterSchema) ]).optional(),
   _count: z.lazy(() => NestedIntFilterSchema).optional(),
   _min: z.lazy(() => NestedStringFilterSchema).optional(),
@@ -890,6 +1018,7 @@ export const StringNullableWithAggregatesFilterSchema: z.ZodType<Prisma.StringNu
   contains: z.string().optional(),
   startsWith: z.string().optional(),
   endsWith: z.string().optional(),
+  mode: z.lazy(() => QueryModeSchema).optional(),
   not: z.union([ z.string(),z.lazy(() => NestedStringNullableWithAggregatesFilterSchema) ]).optional().nullable(),
   _count: z.lazy(() => NestedIntNullableFilterSchema).optional(),
   _min: z.lazy(() => NestedStringNullableFilterSchema).optional(),
@@ -1135,6 +1264,37 @@ export const FloatWithAggregatesFilterSchema: z.ZodType<Prisma.FloatWithAggregat
   _sum: z.lazy(() => NestedFloatFilterSchema).optional(),
   _min: z.lazy(() => NestedFloatFilterSchema).optional(),
   _max: z.lazy(() => NestedFloatFilterSchema).optional()
+}).strict();
+
+export const SampledValueCountOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueCountOrderByAggregateInput> = z.object({
+  id: z.lazy(() => SortOrderSchema).optional(),
+  time: z.lazy(() => SortOrderSchema).optional(),
+  value: z.lazy(() => SortOrderSchema).optional(),
+  filtered: z.lazy(() => SortOrderSchema).optional()
+}).strict();
+
+export const SampledValueAvgOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueAvgOrderByAggregateInput> = z.object({
+  id: z.lazy(() => SortOrderSchema).optional(),
+  value: z.lazy(() => SortOrderSchema).optional()
+}).strict();
+
+export const SampledValueMaxOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueMaxOrderByAggregateInput> = z.object({
+  id: z.lazy(() => SortOrderSchema).optional(),
+  time: z.lazy(() => SortOrderSchema).optional(),
+  value: z.lazy(() => SortOrderSchema).optional(),
+  filtered: z.lazy(() => SortOrderSchema).optional()
+}).strict();
+
+export const SampledValueMinOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueMinOrderByAggregateInput> = z.object({
+  id: z.lazy(() => SortOrderSchema).optional(),
+  time: z.lazy(() => SortOrderSchema).optional(),
+  value: z.lazy(() => SortOrderSchema).optional(),
+  filtered: z.lazy(() => SortOrderSchema).optional()
+}).strict();
+
+export const SampledValueSumOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueSumOrderByAggregateInput> = z.object({
+  id: z.lazy(() => SortOrderSchema).optional(),
+  value: z.lazy(() => SortOrderSchema).optional()
 }).strict();
 
 export const SessionCreateNestedManyWithoutUserInputSchema: z.ZodType<Prisma.SessionCreateNestedManyWithoutUserInput> = z.object({
@@ -1424,6 +1584,7 @@ export const SessionCreateOrConnectWithoutUserInputSchema: z.ZodType<Prisma.Sess
 
 export const SessionCreateManyUserInputEnvelopeSchema: z.ZodType<Prisma.SessionCreateManyUserInputEnvelope> = z.object({
   data: z.union([ z.lazy(() => SessionCreateManyUserInputSchema),z.lazy(() => SessionCreateManyUserInputSchema).array() ]),
+  skipDuplicates: z.boolean().optional()
 }).strict();
 
 export const SessionUpsertWithWhereUniqueWithoutUserInputSchema: z.ZodType<Prisma.SessionUpsertWithWhereUniqueWithoutUserInput> = z.object({
@@ -1757,6 +1918,63 @@ export const SampledValuesSettingFindUniqueOrThrowArgsSchema: z.ZodType<Prisma.S
   where: SampledValuesSettingWhereUniqueInputSchema,
 }).strict() ;
 
+export const SampledValueFindFirstArgsSchema: z.ZodType<Prisma.SampledValueFindFirstArgs> = z.object({
+  select: SampledValueSelectSchema.optional(),
+  where: SampledValueWhereInputSchema.optional(),
+  orderBy: z.union([ SampledValueOrderByWithRelationInputSchema.array(),SampledValueOrderByWithRelationInputSchema ]).optional(),
+  cursor: SampledValueWhereUniqueInputSchema.optional(),
+  take: z.number().optional(),
+  skip: z.number().optional(),
+  distinct: z.union([ SampledValueScalarFieldEnumSchema,SampledValueScalarFieldEnumSchema.array() ]).optional(),
+}).strict() ;
+
+export const SampledValueFindFirstOrThrowArgsSchema: z.ZodType<Prisma.SampledValueFindFirstOrThrowArgs> = z.object({
+  select: SampledValueSelectSchema.optional(),
+  where: SampledValueWhereInputSchema.optional(),
+  orderBy: z.union([ SampledValueOrderByWithRelationInputSchema.array(),SampledValueOrderByWithRelationInputSchema ]).optional(),
+  cursor: SampledValueWhereUniqueInputSchema.optional(),
+  take: z.number().optional(),
+  skip: z.number().optional(),
+  distinct: z.union([ SampledValueScalarFieldEnumSchema,SampledValueScalarFieldEnumSchema.array() ]).optional(),
+}).strict() ;
+
+export const SampledValueFindManyArgsSchema: z.ZodType<Prisma.SampledValueFindManyArgs> = z.object({
+  select: SampledValueSelectSchema.optional(),
+  where: SampledValueWhereInputSchema.optional(),
+  orderBy: z.union([ SampledValueOrderByWithRelationInputSchema.array(),SampledValueOrderByWithRelationInputSchema ]).optional(),
+  cursor: SampledValueWhereUniqueInputSchema.optional(),
+  take: z.number().optional(),
+  skip: z.number().optional(),
+  distinct: z.union([ SampledValueScalarFieldEnumSchema,SampledValueScalarFieldEnumSchema.array() ]).optional(),
+}).strict() ;
+
+export const SampledValueAggregateArgsSchema: z.ZodType<Prisma.SampledValueAggregateArgs> = z.object({
+  where: SampledValueWhereInputSchema.optional(),
+  orderBy: z.union([ SampledValueOrderByWithRelationInputSchema.array(),SampledValueOrderByWithRelationInputSchema ]).optional(),
+  cursor: SampledValueWhereUniqueInputSchema.optional(),
+  take: z.number().optional(),
+  skip: z.number().optional(),
+}).strict() ;
+
+export const SampledValueGroupByArgsSchema: z.ZodType<Prisma.SampledValueGroupByArgs> = z.object({
+  where: SampledValueWhereInputSchema.optional(),
+  orderBy: z.union([ SampledValueOrderByWithAggregationInputSchema.array(),SampledValueOrderByWithAggregationInputSchema ]).optional(),
+  by: SampledValueScalarFieldEnumSchema.array(),
+  having: SampledValueScalarWhereWithAggregatesInputSchema.optional(),
+  take: z.number().optional(),
+  skip: z.number().optional(),
+}).strict() ;
+
+export const SampledValueFindUniqueArgsSchema: z.ZodType<Prisma.SampledValueFindUniqueArgs> = z.object({
+  select: SampledValueSelectSchema.optional(),
+  where: SampledValueWhereUniqueInputSchema,
+}).strict() ;
+
+export const SampledValueFindUniqueOrThrowArgsSchema: z.ZodType<Prisma.SampledValueFindUniqueOrThrowArgs> = z.object({
+  select: SampledValueSelectSchema.optional(),
+  where: SampledValueWhereUniqueInputSchema,
+}).strict() ;
+
 export const UserCreateArgsSchema: z.ZodType<Prisma.UserCreateArgs> = z.object({
   select: UserSelectSchema.optional(),
   include: UserIncludeSchema.optional(),
@@ -1773,10 +1991,12 @@ export const UserUpsertArgsSchema: z.ZodType<Prisma.UserUpsertArgs> = z.object({
 
 export const UserCreateManyArgsSchema: z.ZodType<Prisma.UserCreateManyArgs> = z.object({
   data: z.union([ UserCreateManyInputSchema,UserCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const UserCreateManyAndReturnArgsSchema: z.ZodType<Prisma.UserCreateManyAndReturnArgs> = z.object({
   data: z.union([ UserCreateManyInputSchema,UserCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const UserDeleteArgsSchema: z.ZodType<Prisma.UserDeleteArgs> = z.object({
@@ -1825,10 +2045,12 @@ export const SessionUpsertArgsSchema: z.ZodType<Prisma.SessionUpsertArgs> = z.ob
 
 export const SessionCreateManyArgsSchema: z.ZodType<Prisma.SessionCreateManyArgs> = z.object({
   data: z.union([ SessionCreateManyInputSchema,SessionCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const SessionCreateManyAndReturnArgsSchema: z.ZodType<Prisma.SessionCreateManyAndReturnArgs> = z.object({
   data: z.union([ SessionCreateManyInputSchema,SessionCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const SessionDeleteArgsSchema: z.ZodType<Prisma.SessionDeleteArgs> = z.object({
@@ -1875,10 +2097,12 @@ export const GooseSettingUpsertArgsSchema: z.ZodType<Prisma.GooseSettingUpsertAr
 
 export const GooseSettingCreateManyArgsSchema: z.ZodType<Prisma.GooseSettingCreateManyArgs> = z.object({
   data: z.union([ GooseSettingCreateManyInputSchema,GooseSettingCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const GooseSettingCreateManyAndReturnArgsSchema: z.ZodType<Prisma.GooseSettingCreateManyAndReturnArgs> = z.object({
   data: z.union([ GooseSettingCreateManyInputSchema,GooseSettingCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const GooseSettingDeleteArgsSchema: z.ZodType<Prisma.GooseSettingDeleteArgs> = z.object({
@@ -1923,10 +2147,12 @@ export const SampledValuesSettingUpsertArgsSchema: z.ZodType<Prisma.SampledValue
 
 export const SampledValuesSettingCreateManyArgsSchema: z.ZodType<Prisma.SampledValuesSettingCreateManyArgs> = z.object({
   data: z.union([ SampledValuesSettingCreateManyInputSchema,SampledValuesSettingCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const SampledValuesSettingCreateManyAndReturnArgsSchema: z.ZodType<Prisma.SampledValuesSettingCreateManyAndReturnArgs> = z.object({
   data: z.union([ SampledValuesSettingCreateManyInputSchema,SampledValuesSettingCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const SampledValuesSettingDeleteArgsSchema: z.ZodType<Prisma.SampledValuesSettingDeleteArgs> = z.object({
@@ -1954,5 +2180,55 @@ export const SampledValuesSettingUpdateManyAndReturnArgsSchema: z.ZodType<Prisma
 
 export const SampledValuesSettingDeleteManyArgsSchema: z.ZodType<Prisma.SampledValuesSettingDeleteManyArgs> = z.object({
   where: SampledValuesSettingWhereInputSchema.optional(),
+  limit: z.number().optional(),
+}).strict() ;
+
+export const SampledValueCreateArgsSchema: z.ZodType<Prisma.SampledValueCreateArgs> = z.object({
+  select: SampledValueSelectSchema.optional(),
+  data: z.union([ SampledValueCreateInputSchema,SampledValueUncheckedCreateInputSchema ]),
+}).strict() ;
+
+export const SampledValueUpsertArgsSchema: z.ZodType<Prisma.SampledValueUpsertArgs> = z.object({
+  select: SampledValueSelectSchema.optional(),
+  where: SampledValueWhereUniqueInputSchema,
+  create: z.union([ SampledValueCreateInputSchema,SampledValueUncheckedCreateInputSchema ]),
+  update: z.union([ SampledValueUpdateInputSchema,SampledValueUncheckedUpdateInputSchema ]),
+}).strict() ;
+
+export const SampledValueCreateManyArgsSchema: z.ZodType<Prisma.SampledValueCreateManyArgs> = z.object({
+  data: z.union([ SampledValueCreateManyInputSchema,SampledValueCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
+}).strict() ;
+
+export const SampledValueCreateManyAndReturnArgsSchema: z.ZodType<Prisma.SampledValueCreateManyAndReturnArgs> = z.object({
+  data: z.union([ SampledValueCreateManyInputSchema,SampledValueCreateManyInputSchema.array() ]),
+  skipDuplicates: z.boolean().optional(),
+}).strict() ;
+
+export const SampledValueDeleteArgsSchema: z.ZodType<Prisma.SampledValueDeleteArgs> = z.object({
+  select: SampledValueSelectSchema.optional(),
+  where: SampledValueWhereUniqueInputSchema,
+}).strict() ;
+
+export const SampledValueUpdateArgsSchema: z.ZodType<Prisma.SampledValueUpdateArgs> = z.object({
+  select: SampledValueSelectSchema.optional(),
+  data: z.union([ SampledValueUpdateInputSchema,SampledValueUncheckedUpdateInputSchema ]),
+  where: SampledValueWhereUniqueInputSchema,
+}).strict() ;
+
+export const SampledValueUpdateManyArgsSchema: z.ZodType<Prisma.SampledValueUpdateManyArgs> = z.object({
+  data: z.union([ SampledValueUpdateManyMutationInputSchema,SampledValueUncheckedUpdateManyInputSchema ]),
+  where: SampledValueWhereInputSchema.optional(),
+  limit: z.number().optional(),
+}).strict() ;
+
+export const SampledValueUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.SampledValueUpdateManyAndReturnArgs> = z.object({
+  data: z.union([ SampledValueUpdateManyMutationInputSchema,SampledValueUncheckedUpdateManyInputSchema ]),
+  where: SampledValueWhereInputSchema.optional(),
+  limit: z.number().optional(),
+}).strict() ;
+
+export const SampledValueDeleteManyArgsSchema: z.ZodType<Prisma.SampledValueDeleteManyArgs> = z.object({
+  where: SampledValueWhereInputSchema.optional(),
   limit: z.number().optional(),
 }).strict() ;

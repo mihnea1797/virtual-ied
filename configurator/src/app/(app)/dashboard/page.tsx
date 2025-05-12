@@ -1,4 +1,5 @@
 import SignOutBtn from "@/components/auth/SignOutBtn";
+import RMSPlot from "@/components/Plot";
 import { getUserAuth } from "@/lib/auth/utils";
 
 export default async function Home() {
@@ -9,6 +10,7 @@ export default async function Home() {
       <pre className="bg-secondary p-4 rounded-lg my-2">
         {JSON.stringify(session, null, 2)}
       </pre>
+      <RMSPlot />
       <SignOutBtn />
     </main>
   );
