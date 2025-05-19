@@ -1,12 +1,11 @@
 import { router, publicProcedure } from "@/lib/server/trpc"
 import { z } from "zod"
 import {
-  getAllRmsValues,
   getRmsValueById,
   getRmsValuesSince,
   getLatestRmsValue,
 } from "@/lib/api/rmsValues/queries"
-import { ingestRMS } from "@/utils/sampleValuesSimulator"
+import { ingestRMS } from "@/utils/insertTestDataFromLocal"
 import { db } from '@/lib/db/index'
 
 export const rmsValuesRouter = router({

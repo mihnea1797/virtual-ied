@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { useRef, useState } from "react";
 import MergingUnitStatus from "./ui/MergingUnitStatus";
+import SignOutBtn from "./auth/SignOutBtn";
 
 export interface SidebarLink {
     title: string;
@@ -123,13 +124,9 @@ const SidebarItems = () => {
             >
                 {startMergingUnitDisabled ? "Stop vIED" : `Start${isMergingUnitStarting ? 'ing' : ''} vIED`}
             </Button>
-            {/* <Button
-                // onClick={() => stopMergingUnit()}
-                disabled={isMergingUnitStopping}
-                className="w-full mt-4"
-            >
-                Stop vIED
-            </Button> */}
+            <div className="absolute bottom-8 ">
+                <SignOutBtn />
+            </div>
         </>
     );
 };

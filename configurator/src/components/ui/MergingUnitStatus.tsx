@@ -16,10 +16,7 @@ export default function MergingUnitStatus() {
 
   return (
     <div>
-      <h3>Status: {data.isRunning ? 'Active ✅' : 'Inactive ❌'}</h3>
-      {/* <button onClick={() => refetch()} className="mt-2 px-3 py-1rounded">
-        Reload status
-      </button> */}
+      <h3>Status: {data.isRunning ? 'Running ✅' : 'Stopped ❌'}</h3>
     </div>
   )
 }

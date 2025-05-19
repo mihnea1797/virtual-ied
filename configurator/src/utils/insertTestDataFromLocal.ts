@@ -16,7 +16,7 @@ export async function ingestRMS(batchSize = 4, intervalMs = 1): Promise<void> {
   ])
 
   if (!unfilteredRes.ok || !filteredRes.ok) {
-    throw new Error('❌ Nu s-au putut încărca fișierele JSON din /public.')
+    throw new Error('❌ Failed to load JSON Data.')
   }
 
   const unfilteredJson = await unfilteredRes.json() as Array<{ timestamp: string; value: number }>
@@ -33,7 +33,7 @@ export async function ingestRMS(batchSize = 4, intervalMs = 1): Promise<void> {
 
   const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms))
 
-  console.log(`→ Streaming ${unfilteredRows.length} puncte (unfiltered)`)
+  console.log(`→ Streaming ${unfilteredRows.length} points (unfiltered)`)
   for (let i = 0; i < unfilteredRows.length; i += batchSize) {
     const batch = unfilteredRows.slice(i, i + batchSize).map((row) => ({
       ...row,
@@ -43,7 +43,7 @@ export async function ingestRMS(batchSize = 4, intervalMs = 1): Promise<void> {
     await sleep(intervalMs)
   }
   
-  console.log(`→ Streaming ${filteredRows.length} puncte (filtered)`)
+  console.log(`→ Streaming ${filteredRows.length} points (filtered)`)
   for (let i = 0; i < filteredRows.length; i += batchSize) {
     const batch = filteredRows.slice(i, i + batchSize).map((row) => ({
       ...row,
@@ -54,5 +54,5 @@ export async function ingestRMS(batchSize = 4, intervalMs = 1): Promise<void> {
   }
   
 
-  console.log('✅ Toate datele au fost inserate la rata de ≃4000/s.')
+  console.log('✅ All test data inserted successfully.')
 }

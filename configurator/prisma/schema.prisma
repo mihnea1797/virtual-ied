@@ -55,8 +55,6 @@ model SampledValuesSetting {
   threshold         Float
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-
-  @@map("sampled_values_setting")
 }
 
 model SampledValue {
