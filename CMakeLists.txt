@@ -26,7 +26,7 @@ else()
 endif()
 
 # Find the location oh hal_socket.h library
-find_path(LIBIEC61850_HAL_SOCKET NAMES hal_socket.h PATHS /usr/local/libiec61850/hal/inc)
+find_path(LIBIEC61850_HAL_SOCKET NAMES hal_socket.h PATHS /root/libiec61850/hal/inc)
 if(NOT LIBIEC61850_HAL_SOCKET)
     message(FATAL_ERROR "libiec61850 : hal_socket.h not found")
 else()

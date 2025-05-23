@@ -1,9 +1,10 @@
 #include "SampledValuesSubscriberWrapper.hpp"
 
 // Static member initialization
-RmsComputationObject SampledValuesSubscriberWrapper::rmsObject = RmsComputationObject((uint8_t)80,(double)537401.187777);
-ButterworthFilter SampledValuesSubscriberWrapper::butterFilter = ButterworthFilter((uint8_t)1,(float)200,(float)4000);
-FrequencyTracking SampledValuesSubscriberWrapper::frequencyTracker = FrequencyTracking();
+std::vector<RmsComputationObject> SampledValuesSubscriberWrapper::rmsObject;
+std::vector<ButterworthFilter> SampledValuesSubscriberWrapper::butterFilter;
+std::vector<FrequencyTracking> SampledValuesSubscriberWrapper::frequencyTracker;
+
 DataFormat SampledValuesSubscriberWrapper::format = DataFormat::pairVI;
 
 SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &settings)
@@ -68,6 +69,32 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> & voltageM
 
     switch(format)
     {
+        case DataFormat::onlyV:
+            if( dataSize < 8) return false;
+            while (offset < dataSize)
+            {
+                int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+                voltageMeasurements.push_back(voltageValue);
+                offset += 4;
+
+                Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+                offset += 4;
+            }
+        break;
+
+        case DataFormat::onlyI:
+            if( dataSize < 8) return false;
+            while (offset < dataSize)
+            {
+                int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+                currentMeasurements.push_back(currentValue);
+                offset += 4;
+
+                Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+                offset += 4;
+            }
+        break;
+
         case DataFormat::clusterVI:
             if( dataSize < 8) return false;
             while (offset < dataSize / 2)
@@ -191,32 +218,63 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
     std::vector<int32_t> voltageMeasurements;
     std::vector<int32_t> currentMeasurements;
 
-    if( parseSVData(voltageMeasurements, currentMeasurements, asdu) )
+    if(parseSVData(voltageMeasurements, currentMeasurements, asdu))
     {
-        // int32_t filteredValue = butterFilter.filter(voltageMeasurements[1])
-        // double rms = rmsObject.computeValue(filteredValue);
-        double rms = rmsObject.computeValue(voltageMeasurements[1]);
-        if (params->goosePublishMessageFunction)
+        if( format == DataFormat::onlyV )
         {
-            printf("Checking rms Value...\n");
-            if (rms * sqrt2> params->threshold)
+            for(uint32_t index = 0; index < 3; index++)
             {
-                (*(params->goosePublishMessageFunction))(true);
+                // int32_t filteredValue = butterFilter[index].filter(voltageMeasurements[index])
+                // double rms = rmsObject[index].computeValue(filteredValue);
+                double rms = rmsObject[index].computeValue(voltageMeasurements[index]);
+                if (params->goosePublishMessageFunction)
+                {
+                    printf("Checking rms Value for phase %d...\n", index + 1);
+                    if (rms * sqrt2> params->threshold)
+                    {
+                        (*(params->goosePublishMessageFunction))(true);
+                    }
+                }
+            // double estimatedFrequency = frequencyTrackerP[index].frequencyEstimation(filteredValue, sampleTimeStamp);
+            // double estimatedFrequency = frequencyTrackerP[index].frequencyEstimation(voltageMeasurements[index], sampleTimeStamp);
             }
         }
-        // double estimatedFrequency = frequencyTracker.frequencyEstimation(filteredValue, sampleTimeStamp);
-        double estimatedFrequency = frequencyTracker.frequencyEstimation(voltageMeasurements[1], sampleTimeStamp);
+
+        else if( format == DataFormat::onlyI )
+        {
+            for(uint32_t index = 0; index < 3; index++)
+            {
+                // int32_t filteredValue = butterFilter[index].filter(currentMeasurements[index])
+                // double rms = rmsObject[index].computeValue(filteredValue);
+                double rms = rmsObject[index].computeValue(currentMeasurements[index]);
+                if (params->goosePublishMessageFunction)
+                {
+                    printf("Checking rms Value for phase %d...\n", index + 1);
+                    if (rms * sqrt2> params->threshold)
+                    {
+                        (*(params->goosePublishMessageFunction))(true);
+                    }
+                }
+            // double estimatedFrequency = frequencyTrackerP[index].frequencyEstimation(filteredValue, sampleTimeStamp);
+            // double estimatedFrequency = frequencyTrackerP[index].frequencyEstimation(currentMeasurements[index], sampleTimeStamp);
+            }
+        }
     }
 }
 
-void SampledValuesSubscriberWrapper::setRmsObject(const RmsComputationObject & rmsObjectReference)
+void SampledValuesSubscriberWrapper::setRmsObject(const nlohmann::json & signalProperties)
 {
-    rmsObject = rmsObjectReference;
+    rmsObject.emplace_back(signalProperties);
 }
 
-void SampledValuesSubscriberWrapper::setButterFilter(const ButterworthFilter & butterFilterReference)
+void SampledValuesSubscriberWrapper::setButterFilter(const nlohmann::json & filterProperties)
 {
-    butterFilter = butterFilterReference;
+    butterFilter.emplace_back(filterProperties);
+}
+
+void SampledValuesSubscriberWrapper::setFrequencyTracker()
+{
+    frequencyTracker.push_back(FrequencyTracking());
 }
 
 void SampledValuesSubscriberWrapper::setDataFormat(const nlohmann::json & dataFormat)
@@ -236,6 +294,13 @@ void SampledValuesSubscriberWrapper::setDataFormat(const nlohmann::json & dataFo
             format = DataFormat::pairVI;
         else if( measurementOrder == "currentFirst" )
             format = DataFormat::pairIV;
+    }
+    else if( clusteringType == "single" )
+    {
+        if( measurementOrder == "voltageFirst" )
+            format = DataFormat::onlyV;
+        else if( measurementOrder == "currentFirst" )
+            format = DataFormat::onlyI;
     }
 }
 
