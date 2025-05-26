@@ -24,7 +24,9 @@ int main()
     nlohmann::json signalProperties = config["signalProperties"];
     nlohmann::json filterProperties = config["filterProperties"];
     nlohmann::json dataFormat = config["dataFormat"];
-    for(uint32_t index = 0; index < NUMBER_OF_PHASES; index++)
+    nlohmann::json postgresSqlProperties = config["postgresSql"];
+
+    for (uint32_t index = 0; index < NUMBER_OF_PHASES; index++)
     {
         SampledValuesSubscriberWrapper::setRmsObject(signalProperties);
         SampledValuesSubscriberWrapper::setButterFilter(filterProperties);
@@ -33,7 +35,7 @@ int main()
     SampledValuesSubscriberWrapper::setDataFormat(dataFormat);
 
     std::unique_ptr<GoosePublisherWrapper> goosePublisher = std::make_unique<GoosePublisherWrapper>(gooseSettings);
-    std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings); 
+    std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings, postgresSqlProperties);
 
     goosePublisher->Print();
     sampledValuesSubscriber->Print();

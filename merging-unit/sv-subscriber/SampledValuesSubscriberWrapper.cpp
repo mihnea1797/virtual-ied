@@ -7,10 +7,10 @@ std::vector<FrequencyTracking> SampledValuesSubscriberWrapper::frequencyTracker;
 
 DataFormat SampledValuesSubscriberWrapper::format = DataFormat::pairVI;
 
-SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &settings)
+SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &sampleValuesSettings, const nlohmann::json &postgresSqlProperties)
 {
-    ParseSettings(settings);
-    dbConn_ = std::make_unique<pqxx::connection>("dbname=merging_unit user=postgres password=postgres hostaddr=127.0.0.1");
+    ParseSettings(sampleValuesSettings);
+    ParsePostgresSQL(postgresSqlProperties);
     _receiver = SVReceiver_create();
     SVReceiver_setInterfaceId(_receiver, const_cast<char *>(_interface.c_str()));
 
@@ -325,10 +325,20 @@ void SampledValuesSubscriberWrapper::Print()
     }
 }
 
-void SampledValuesSubscriberWrapper::ParseSettings(const nlohmann::json &settings)
+void SampledValuesSubscriberWrapper::ParseSettings(const nlohmann::json &sampleValuesSettings)
 {
-    _interface = settings.at("ethernetInterface").get<std::string>();
-    _appId = settings.at("appId").get<uint16_t>();
-    _destAddrCheck = settings.at("dstAddressCheck").get<bool>();
-    _threshold = settings.at("threshold").get<double>();
+    _interface = sampleValuesSettings.at("ethernetInterface").get<std::string>();
+    _appId = sampleValuesSettings.at("appId").get<uint16_t>();
+    _destAddrCheck = sampleValuesSettings.at("dstAddressCheck").get<bool>();
+    _threshold = sampleValuesSettings.at("threshold").get<double>();
+}
+
+void SampledValuesSubscriberWrapper::ParsePostgresSQL(const nlohmann::json &postgresSqlProperties)
+{
+    std::string postgresSqlConfigString = "";
+    postgresSqlConfigString +=  "dbname=" + postgresSqlProperties.at("dbname").get<std::string>() + " ";
+    postgresSqlConfigString +=  "user=" + postgresSqlProperties.at("user").get<std::string>() + " ";
+    postgresSqlConfigString +=  "password=" + postgresSqlProperties.at("password").get<std::string>() + " ";
+    postgresSqlConfigString +=  "hostaddr=" + postgresSqlProperties.at("hostaddr").get<std::string>();
+    dbConn_ = std::make_unique<pqxx::connection>(postgresSqlConfigString);
 }

@@ -57,9 +57,10 @@ private:
     static bool parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu);
     static void SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu);
     void ParseSettings(const nlohmann::json &settings);
-
+    void ParsePostgresSQL(const nlohmann::json &postgresSqlPorperties);
+    
 public:
-    SampledValuesSubscriberWrapper(const nlohmann::json &settings);
+    SampledValuesSubscriberWrapper(const nlohmann::json &sampleValuesSettings, const nlohmann::json &postgresSqlPorperties);
     ~SampledValuesSubscriberWrapper();
 
     static void setRmsObject(const nlohmann::json &signalProperties);
