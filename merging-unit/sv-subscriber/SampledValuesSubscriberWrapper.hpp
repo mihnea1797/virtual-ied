@@ -12,9 +12,10 @@ extern "C"
 #include "RmsComputationObject.hpp"
 #include "ButterworthFilter.hpp"
 #include "FrequencyTracking.hpp"
+#include <pqxx/pqxx>
 
 // Macro used for defining the number of phases
-#define NUMBER_OF_PHASES ((uint32_t) 3)
+#define NUMBER_OF_PHASES ((uint32_t)3)
 
 enum class DataFormat
 {
@@ -46,23 +47,25 @@ private:
     bool listenerSet = false;
     ListenerParameters _listenerParams;
 
+    std::unique_ptr<pqxx::connection> dbConn_;
+
     static std::vector<RmsComputationObject> rmsObject;
     static std::vector<ButterworthFilter> butterFilter;
     static std::vector<FrequencyTracking> frequencyTracker;
 
     static DataFormat format;
-    static bool parseSVData(std::vector<int32_t> & voltageMeasurements, std::vector<int32_t> & currentMeasurements, const SVSubscriber_ASDU & asdu);
+    static bool parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu);
     static void SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu);
     void ParseSettings(const nlohmann::json &settings);
 
 public:
     SampledValuesSubscriberWrapper(const nlohmann::json &settings);
     ~SampledValuesSubscriberWrapper();
-    
-    static void setRmsObject(const nlohmann::json & signalProperties);
-    static void setButterFilter(const nlohmann::json & filterProperties);
+
+    static void setRmsObject(const nlohmann::json &signalProperties);
+    static void setButterFilter(const nlohmann::json &filterProperties);
     static void setFrequencyTracker();
-    static void setDataFormat(const nlohmann::json & dataFormat);
+    static void setDataFormat(const nlohmann::json &dataFormat);
     void Start();
     void SetListener(std::function<void(bool)> goosePublishMessageFunction);
     void Print();

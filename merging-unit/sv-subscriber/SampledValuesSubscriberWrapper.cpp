@@ -10,7 +10,7 @@ DataFormat SampledValuesSubscriberWrapper::format = DataFormat::pairVI;
 SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &settings)
 {
     ParseSettings(settings);
-
+    dbConn_ = std::make_unique<pqxx::connection>("dbname=merging_unit user=postgres password=postgres hostaddr=127.0.0.1");
     _receiver = SVReceiver_create();
     SVReceiver_setInterfaceId(_receiver, const_cast<char *>(_interface.c_str()));
 
@@ -59,7 +59,7 @@ void SampledValuesSubscriberWrapper::Start()
     }
 }
 
-bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> & voltageMeasurements, std::vector<int32_t> & currentMeasurements, const SVSubscriber_ASDU & asdu)
+bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu)
 {
     voltageMeasurements.clear();
     currentMeasurements.clear();
@@ -67,138 +67,145 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> & voltageM
     int dataSize = SVSubscriber_ASDU_getDataSize(asdu);
     int offset = 0;
 
-    switch(format)
+    switch (format)
     {
-        case DataFormat::onlyV:
-            if( dataSize < 8) return false;
-            while (offset < dataSize)
-            {
-                int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                voltageMeasurements.push_back(voltageValue);
-                offset += 4;
+    case DataFormat::onlyV:
+        if (dataSize < 8)
+            return false;
+        while (offset < dataSize)
+        {
+            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            voltageMeasurements.push_back(voltageValue);
+            offset += 4;
 
-                Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
-            }
+            Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
+        }
         break;
 
-        case DataFormat::onlyI:
-            if( dataSize < 8) return false;
-            while (offset < dataSize)
-            {
-                int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                currentMeasurements.push_back(currentValue);
-                offset += 4;
+    case DataFormat::onlyI:
+        if (dataSize < 8)
+            return false;
+        while (offset < dataSize)
+        {
+            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            currentMeasurements.push_back(currentValue);
+            offset += 4;
 
-                Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
-            }
+            Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
+        }
         break;
 
-        case DataFormat::clusterVI:
-            if( dataSize < 8) return false;
-            while (offset < dataSize / 2)
-            {
-                int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                voltageMeasurements.push_back(voltageValue);
-                offset += 4;
+    case DataFormat::clusterVI:
+        if (dataSize < 8)
+            return false;
+        while (offset < dataSize / 2)
+        {
+            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            voltageMeasurements.push_back(voltageValue);
+            offset += 4;
 
-                Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
-            }
+            Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
+        }
 
-            while (offset < dataSize)
-            {
-                int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                currentMeasurements.push_back(currentValue);
-                offset += 4;
+        while (offset < dataSize)
+        {
+            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            currentMeasurements.push_back(currentValue);
+            offset += 4;
 
-                Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
-            }
+            Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
+        }
         break;
 
-        case DataFormat::clusterIV:
-            if( dataSize < 8) return false;
-            while (offset < dataSize / 2)
-            {
-                int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                currentMeasurements.push_back(currentValue);
-                offset += 4;
+    case DataFormat::clusterIV:
+        if (dataSize < 8)
+            return false;
+        while (offset < dataSize / 2)
+        {
+            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            currentMeasurements.push_back(currentValue);
+            offset += 4;
 
-                Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
-            }
+            Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
+        }
 
-            while (offset < dataSize)
-            {
-                int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                voltageMeasurements.push_back(voltageValue);
-                offset += 4;
+        while (offset < dataSize)
+        {
+            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            voltageMeasurements.push_back(voltageValue);
+            offset += 4;
 
-                Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
-            }
+            Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
+        }
         break;
 
-        case DataFormat::pairVI:
-            if( dataSize < 16) return false;
-            while (offset < dataSize )
-            {
-                int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                voltageMeasurements.push_back(voltageValue);
-                offset += 4;
+    case DataFormat::pairVI:
+        if (dataSize < 16)
+            return false;
+        while (offset < dataSize)
+        {
+            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            voltageMeasurements.push_back(voltageValue);
+            offset += 4;
 
-                Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
+            Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
 
-                int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                currentMeasurements.push_back(currentValue);
-                offset += 4;
+            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            currentMeasurements.push_back(currentValue);
+            offset += 4;
 
-                Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
-            }
+            Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
+        }
         break;
 
-        case DataFormat::pairIV:
-            if( dataSize < 16) return false;
-            while (offset < dataSize )
-            {
-                int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                currentMeasurements.push_back(currentValue);
-                offset += 4;
+    case DataFormat::pairIV:
+        if (dataSize < 16)
+            return false;
+        while (offset < dataSize)
+        {
+            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            currentMeasurements.push_back(currentValue);
+            offset += 4;
 
-                Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
+            Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
 
-                int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                voltageMeasurements.push_back(voltageValue);
-                offset += 4;
+            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            voltageMeasurements.push_back(voltageValue);
+            offset += 4;
 
-                Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
-            }
+            Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
+        }
         break;
 
-        default:
-            if( dataSize < 16) return false;
-            while (offset < dataSize )
-            {
-                int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                voltageMeasurements.push_back(voltageValue);
-                offset += 4;
+    default:
+        if (dataSize < 16)
+            return false;
+        while (offset < dataSize)
+        {
+            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            voltageMeasurements.push_back(voltageValue);
+            offset += 4;
 
-                Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
+            Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
 
-                int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
-                currentMeasurements.push_back(currentValue);
-                offset += 4;
+            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            currentMeasurements.push_back(currentValue);
+            offset += 4;
 
-                Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
-                offset += 4;
-            }
+            Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
+            offset += 4;
+        }
         break;
     };
 
@@ -218,11 +225,11 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
     std::vector<int32_t> voltageMeasurements;
     std::vector<int32_t> currentMeasurements;
 
-    if(parseSVData(voltageMeasurements, currentMeasurements, asdu))
+    if (parseSVData(voltageMeasurements, currentMeasurements, asdu))
     {
-        if( format == DataFormat::onlyV )
+        if (format == DataFormat::onlyV)
         {
-            for(uint32_t index = 0; index < NUMBER_OF_PHASES; index++)
+            for (uint32_t index = 0; index < NUMBER_OF_PHASES; index++)
             {
                 int32_t filteredValue = butterFilter[index].filter(voltageMeasurements[index]);
                 double rms = rmsObject[index].computeValue(filteredValue);
@@ -230,19 +237,19 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                 if (params->goosePublishMessageFunction)
                 {
                     printf("Checking rms Value for phase %d...\n", index + 1);
-                    if (rms * sqrt2> params->threshold)
+                    if (rms * sqrt2 > params->threshold)
                     {
                         (*(params->goosePublishMessageFunction))(true);
                     }
                 }
-            // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
-            // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(voltageMeasurements[index], sampleTimeStamp);
+                // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
+                // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(voltageMeasurements[index], sampleTimeStamp);
             }
         }
 
-        else if( format == DataFormat::onlyI )
+        else if (format == DataFormat::onlyI)
         {
-            for(uint32_t index = 0; index < NUMBER_OF_PHASES; index++)
+            for (uint32_t index = 0; index < NUMBER_OF_PHASES; index++)
             {
                 int32_t filteredValue = butterFilter[index].filter(currentMeasurements[index]);
                 double rms = rmsObject[index].computeValue(filteredValue);
@@ -250,24 +257,24 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                 if (params->goosePublishMessageFunction)
                 {
                     printf("Checking rms Value for phase %d...\n", index + 1);
-                    if (rms * sqrt2> params->threshold)
+                    if (rms * sqrt2 > params->threshold)
                     {
                         (*(params->goosePublishMessageFunction))(true);
                     }
                 }
-            // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
-            // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(currentMeasurements[index], sampleTimeStamp);
+                // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
+                // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(currentMeasurements[index], sampleTimeStamp);
             }
         }
     }
 }
 
-void SampledValuesSubscriberWrapper::setRmsObject(const nlohmann::json & signalProperties)
+void SampledValuesSubscriberWrapper::setRmsObject(const nlohmann::json &signalProperties)
 {
     rmsObject.emplace_back(signalProperties);
 }
 
-void SampledValuesSubscriberWrapper::setButterFilter(const nlohmann::json & filterProperties)
+void SampledValuesSubscriberWrapper::setButterFilter(const nlohmann::json &filterProperties)
 {
     butterFilter.emplace_back(filterProperties);
 }
@@ -277,29 +284,29 @@ void SampledValuesSubscriberWrapper::setFrequencyTracker()
     frequencyTracker.push_back(FrequencyTracking());
 }
 
-void SampledValuesSubscriberWrapper::setDataFormat(const nlohmann::json & dataFormat)
+void SampledValuesSubscriberWrapper::setDataFormat(const nlohmann::json &dataFormat)
 {
     std::string measurementOrder = dataFormat.at("measurementOrder");
     std::string clusteringType = dataFormat.at("clusteringType");
-    if( clusteringType == "cluster" )
+    if (clusteringType == "cluster")
     {
-        if( measurementOrder == "voltageFirst" )
+        if (measurementOrder == "voltageFirst")
             format = DataFormat::clusterVI;
-        else if( measurementOrder == "currentFirst" )
+        else if (measurementOrder == "currentFirst")
             format = DataFormat::clusterIV;
     }
-    else if( clusteringType == "pair" )
+    else if (clusteringType == "pair")
     {
-        if( measurementOrder == "voltageFirst" )
+        if (measurementOrder == "voltageFirst")
             format = DataFormat::pairVI;
-        else if( measurementOrder == "currentFirst" )
+        else if (measurementOrder == "currentFirst")
             format = DataFormat::pairIV;
     }
-    else if( clusteringType == "single" )
+    else if (clusteringType == "single")
     {
-        if( measurementOrder == "voltageFirst" )
+        if (measurementOrder == "voltageFirst")
             format = DataFormat::onlyV;
-        else if( measurementOrder == "currentFirst" )
+        else if (measurementOrder == "currentFirst")
             format = DataFormat::onlyI;
     }
 }

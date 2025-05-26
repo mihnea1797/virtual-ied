@@ -18,7 +18,7 @@ endif()
 find_path(LIBIEC61850_INCLUDE_DIR NAMES iec61850_server.h PATHS /usr/local/include/libiec61850)
 find_library(LIBIEC61850_LIBRARY NAMES iec61850 PATHS /usr/local/lib)
 
-if (NOT LIBIEC61850_INCLUDE_DIR OR NOT LIBIEC61850_LIBRARY)
+if(NOT LIBIEC61850_INCLUDE_DIR OR NOT LIBIEC61850_LIBRARY)
     message(FATAL_ERROR "libiec61850 not found")
 else()
     message(STATUS "libiec61850 include directory: ${LIBIEC61850_INCLUDE_DIR}")
@@ -33,10 +33,25 @@ else()
     message(STATUS "libiec61850 : hal_socket.h include directory: ${LIBIEC61850_HAL_SOCKET}")
 endif()
 
+# Find PostgreSQL C client (libpq)
+find_package(PostgreSQL REQUIRED)
+if(NOT PostgreSQL_FOUND)
+    message(FATAL_ERROR "PostgreSQL client library not found. Install libpq-dev")
+endif()
+
+# Find PostgreSQL C++ API (libpqxx)
+find_path(PQXX_INCLUDE_DIR NAMES pqxx/pqxx PATHS /usr/include /usr/local/include)
+find_library(PQXX_LIBRARY NAMES pqxx PATHS /usr/lib /usr/local/lib)
+if(NOT PQXX_INCLUDE_DIR OR NOT PQXX_LIBRARY)
+    message(FATAL_ERROR "libpqxx not found. Install libpqxx-dev")
+endif()
+
 # Include directories
 set(INCLUDE_DIRECTORIES
     ${LIBIEC61850_INCLUDE_DIR}
     ${LIBIEC61850_HAL_SOCKET}
+    ${PostgreSQL_INCLUDE_DIRS}
+    ${PQXX_INCLUDE_DIR}
 )
 include_directories(${INCLUDE_DIRECTORIES})
 
@@ -70,6 +85,8 @@ set(SHARED_LIBRARIES
     rms-computation
     butterworth-filter
     frequency-tracking
+    ${PostgreSQL_LIBRARIES}
+    ${PQXX_LIBRARY}
 )
 # Link the shared libraries
 target_link_libraries(merging-unit ${SHARED_LIBRARIES})
