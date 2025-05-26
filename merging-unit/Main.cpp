@@ -35,7 +35,8 @@ int main()
     SampledValuesSubscriberWrapper::setDataFormat(dataFormat);
 
     std::unique_ptr<GoosePublisherWrapper> goosePublisher = std::make_unique<GoosePublisherWrapper>(gooseSettings);
-    std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings, postgresSqlProperties);
+    std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings);
+    SampledValuesSubscriberWrapper::setPostgresConnection(postgresSqlProperties);
 
     goosePublisher->Print();
     sampledValuesSubscriber->Print();

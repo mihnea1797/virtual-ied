@@ -4,13 +4,14 @@
 std::vector<RmsComputationObject> SampledValuesSubscriberWrapper::rmsObject;
 std::vector<ButterworthFilter> SampledValuesSubscriberWrapper::butterFilter;
 std::vector<FrequencyTracking> SampledValuesSubscriberWrapper::frequencyTracker;
+std::unique_ptr<pqxx::connection> SampledValuesSubscriberWrapper::dbConn_ = nullptr;
 
 DataFormat SampledValuesSubscriberWrapper::format = DataFormat::pairVI;
 
-SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &sampleValuesSettings, const nlohmann::json &postgresSqlProperties)
+SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &sampleValuesSettings)
 {
     ParseSettings(sampleValuesSettings);
-    ParsePostgresSQL(postgresSqlProperties);
+
     _receiver = SVReceiver_create();
     SVReceiver_setInterfaceId(_receiver, const_cast<char *>(_interface.c_str()));
 
@@ -233,7 +234,11 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
             {
                 int32_t filteredValue = butterFilter[index].filter(voltageMeasurements[index]);
                 double rms = rmsObject[index].computeValue(filteredValue);
+
+                storeRMSinDatabase(index, rms);
+
                 // double rms = rmsObject[index].computeValue(voltageMeasurements[index]);
+
                 if (params->goosePublishMessageFunction)
                 {
                     printf("Checking rms Value for phase %d...\n", index + 1);
@@ -277,6 +282,11 @@ void SampledValuesSubscriberWrapper::setRmsObject(const nlohmann::json &signalPr
 void SampledValuesSubscriberWrapper::setButterFilter(const nlohmann::json &filterProperties)
 {
     butterFilter.emplace_back(filterProperties);
+}
+
+void SampledValuesSubscriberWrapper::setPostgresConnection(const nlohmann::json &postgresSqlProperties)
+{
+    dbConn_ = std::make_unique<pqxx::connection>(ParsePostgresSQL(postgresSqlProperties));
 }
 
 void SampledValuesSubscriberWrapper::setFrequencyTracker()
@@ -333,12 +343,24 @@ void SampledValuesSubscriberWrapper::ParseSettings(const nlohmann::json &sampleV
     _threshold = sampleValuesSettings.at("threshold").get<double>();
 }
 
-void SampledValuesSubscriberWrapper::ParsePostgresSQL(const nlohmann::json &postgresSqlProperties)
+std::string SampledValuesSubscriberWrapper::ParsePostgresSQL(const nlohmann::json &postgresSqlProperties)
 {
     std::string postgresSqlConfigString = "";
-    postgresSqlConfigString +=  "dbname=" + postgresSqlProperties.at("dbname").get<std::string>() + " ";
-    postgresSqlConfigString +=  "user=" + postgresSqlProperties.at("user").get<std::string>() + " ";
-    postgresSqlConfigString +=  "password=" + postgresSqlProperties.at("password").get<std::string>() + " ";
-    postgresSqlConfigString +=  "hostaddr=" + postgresSqlProperties.at("hostaddr").get<std::string>();
-    dbConn_ = std::make_unique<pqxx::connection>(postgresSqlConfigString);
+    postgresSqlConfigString += "dbname=" + postgresSqlProperties.at("dbname").get<std::string>() + " ";
+    postgresSqlConfigString += "user=" + postgresSqlProperties.at("user").get<std::string>() + " ";
+    postgresSqlConfigString += "password=" + postgresSqlProperties.at("password").get<std::string>() + " ";
+    postgresSqlConfigString += "hostaddr=" + postgresSqlProperties.at("hostaddr").get<std::string>();
+
+    return postgresSqlConfigString;
+}
+
+void SampledValuesSubscriberWrapper::storeRMSinDatabase(uint32_t index, double rms)
+{
+    std::string query =
+        "INSERT INTO rms_voltage (time, app_id, phase, rms_value, filtered) "
+        "VALUES (NOW(), $1, $2, $3, $4);";
+
+    pqxx::work txn(*dbConn_);
+    txn.exec_params(query, std::to_string(16386), std::to_string(index), rms, true);
+    txn.commit();
 }
