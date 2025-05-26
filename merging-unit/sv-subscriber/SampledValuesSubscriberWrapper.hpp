@@ -13,6 +13,9 @@ extern "C"
 #include "ButterworthFilter.hpp"
 #include "FrequencyTracking.hpp"
 
+// Macro used for defining the number of phases
+#define NUMBER_OF_PHASES ((uint32_t) 3)
+
 enum class DataFormat
 {
     onlyV,

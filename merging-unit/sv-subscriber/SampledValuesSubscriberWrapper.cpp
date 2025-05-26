@@ -222,11 +222,11 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
     {
         if( format == DataFormat::onlyV )
         {
-            for(uint32_t index = 0; index < 3; index++)
+            for(uint32_t index = 0; index < NUMBER_OF_PHASES; index++)
             {
-                // int32_t filteredValue = butterFilter[index].filter(voltageMeasurements[index])
-                // double rms = rmsObject[index].computeValue(filteredValue);
-                double rms = rmsObject[index].computeValue(voltageMeasurements[index]);
+                int32_t filteredValue = butterFilter[index].filter(voltageMeasurements[index]);
+                double rms = rmsObject[index].computeValue(filteredValue);
+                // double rms = rmsObject[index].computeValue(voltageMeasurements[index]);
                 if (params->goosePublishMessageFunction)
                 {
                     printf("Checking rms Value for phase %d...\n", index + 1);
@@ -235,18 +235,18 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                         (*(params->goosePublishMessageFunction))(true);
                     }
                 }
-            // double estimatedFrequency = frequencyTrackerP[index].frequencyEstimation(filteredValue, sampleTimeStamp);
-            // double estimatedFrequency = frequencyTrackerP[index].frequencyEstimation(voltageMeasurements[index], sampleTimeStamp);
+            // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
+            // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(voltageMeasurements[index], sampleTimeStamp);
             }
         }
 
         else if( format == DataFormat::onlyI )
         {
-            for(uint32_t index = 0; index < 3; index++)
+            for(uint32_t index = 0; index < NUMBER_OF_PHASES; index++)
             {
-                // int32_t filteredValue = butterFilter[index].filter(currentMeasurements[index])
-                // double rms = rmsObject[index].computeValue(filteredValue);
-                double rms = rmsObject[index].computeValue(currentMeasurements[index]);
+                int32_t filteredValue = butterFilter[index].filter(currentMeasurements[index]);
+                double rms = rmsObject[index].computeValue(filteredValue);
+                // double rms = rmsObject[index].computeValue(currentMeasurements[index]);
                 if (params->goosePublishMessageFunction)
                 {
                     printf("Checking rms Value for phase %d...\n", index + 1);
@@ -255,8 +255,8 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                         (*(params->goosePublishMessageFunction))(true);
                     }
                 }
-            // double estimatedFrequency = frequencyTrackerP[index].frequencyEstimation(filteredValue, sampleTimeStamp);
-            // double estimatedFrequency = frequencyTrackerP[index].frequencyEstimation(currentMeasurements[index], sampleTimeStamp);
+            // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
+            // double estimatedFrequency = frequencyTracker[index].frequencyEstimation(currentMeasurements[index], sampleTimeStamp);
             }
         }
     }

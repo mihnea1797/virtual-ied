@@ -24,7 +24,7 @@ int main()
     nlohmann::json signalProperties = config["signalProperties"];
     nlohmann::json filterProperties = config["filterProperties"];
     nlohmann::json dataFormat = config["dataFormat"];
-    for(uint32_t index = 0; index < 3; index++)
+    for(uint32_t index = 0; index < NUMBER_OF_PHASES; index++)
     {
         SampledValuesSubscriberWrapper::setRmsObject(signalProperties);
         SampledValuesSubscriberWrapper::setButterFilter(filterProperties);

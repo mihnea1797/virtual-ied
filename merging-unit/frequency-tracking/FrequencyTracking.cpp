@@ -58,6 +58,6 @@ double FrequencyTracking::frequencyEstimation(int32_t inputSampleValue, std::chr
             meanPeriod += std::chrono::duration_cast<std::chrono::microseconds>(zeroCrossingTimeStamps[i] - zeroCrossingTimeStamps[i-1]).count();
         }
         meanPeriod = meanPeriod / ( zeroCrossingTimeStamps.size() - 1);
-        return 1e6 / meanPeriod;
+        return 1e6 / ( meanPeriod * 2 );
     }
 }
