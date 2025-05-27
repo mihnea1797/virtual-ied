@@ -29,6 +29,7 @@ enum class DataFormat
 
 struct ListenerParameters
 {
+    uint16_t appId;
     double threshold;
     std::function<void(bool)> *goosePublishMessageFunction;
 };
@@ -73,5 +74,5 @@ public:
     void SetListener(std::function<void(bool)> goosePublishMessageFunction);
     void Print();
 
-    static void storeRMSinDatabase(uint32_t index, double rms);
+    static void storeRMSinDatabase(uint16_t appId, uint32_t index, double rms);
 };

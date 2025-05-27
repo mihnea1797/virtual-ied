@@ -37,6 +37,7 @@ SampledValuesSubscriberWrapper::~SampledValuesSubscriberWrapper()
 
 void SampledValuesSubscriberWrapper::SetListener(std::function<void(bool)> goosePublishMessageFunction)
 {
+    _listenerParams.appId = _appId;
     _listenerParams.goosePublishMessageFunction = &goosePublishMessageFunction;
     _listenerParams.threshold = _threshold;
     SVSubscriber_setListener(_subscriber, SvUpdateListener, &_listenerParams);
@@ -235,7 +236,7 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                 int32_t filteredValue = butterFilter[index].filter(voltageMeasurements[index]);
                 double rms = rmsObject[index].computeValue(filteredValue);
 
-                storeRMSinDatabase(index, rms);
+                storeRMSinDatabase(params->appId, index, rms);
 
                 // double rms = rmsObject[index].computeValue(voltageMeasurements[index]);
 
@@ -258,7 +259,11 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
             {
                 int32_t filteredValue = butterFilter[index].filter(currentMeasurements[index]);
                 double rms = rmsObject[index].computeValue(filteredValue);
+
+                storeRMSinDatabase(params->appId, index, rms);
+
                 // double rms = rmsObject[index].computeValue(currentMeasurements[index]);
+                
                 if (params->goosePublishMessageFunction)
                 {
                     printf("Checking rms Value for phase %d...\n", index + 1);
@@ -354,13 +359,13 @@ std::string SampledValuesSubscriberWrapper::ParsePostgresSQL(const nlohmann::jso
     return postgresSqlConfigString;
 }
 
-void SampledValuesSubscriberWrapper::storeRMSinDatabase(uint32_t index, double rms)
+void SampledValuesSubscriberWrapper::storeRMSinDatabase(uint16_t appId, uint32_t index, double rms)
 {
     std::string query =
         "INSERT INTO rms_voltage (time, app_id, phase, rms_value, filtered) "
         "VALUES (NOW(), $1, $2, $3, $4);";
 
     pqxx::work txn(*dbConn_);
-    txn.exec_params(query, std::to_string(16386), std::to_string(index), rms, true);
+    txn.exec_params(query, std::to_string(appId), std::to_string(index), rms, true);
     txn.commit();
 }
