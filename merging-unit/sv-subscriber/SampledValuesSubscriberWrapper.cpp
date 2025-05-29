@@ -378,6 +378,6 @@ void SampledValuesSubscriberWrapper::storeRMSinDatabase(uint16_t appId, uint32_t
         "VALUES (NOW(), $1, $2, $3, $4);";
 
     pqxx::work txn(*dbConn_);
-    txn.exec_params(query, std::to_string(appId), std::to_string(index), rms, true);
+    txn.exec_params(query, std::to_string(appId), index, rms, true);
     txn.commit();
 }

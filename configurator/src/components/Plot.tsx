@@ -1,182 +1,131 @@
 'use client'
-
 import React, { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
 import SuperJSON from 'superjson'
-
+import { trpc } from '@/lib/trpc/client'
 import { getUrl } from '@/lib/trpc/utils'
 import type { AppRouter } from '@/lib/server/routers/_app'
-import { trpc } from '@/lib/trpc/client'
 
+// Plotly loader
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
 
 const MAX_POINTS = 1000
-const PADDING_RATIO_X = 0.12;
-const PADDING_RATIO_Y = 0.1; 
+const PADDING_RATIO_X = 0.12
+const PADDING_RATIO_Y = 0.1
+
+// shape of series data per phase
+interface SeriesData {
+  x: number[]
+  y: number[]
+}
+
+type SeriesMap = Record<string, SeriesData>
+type VisibilityMap = Record<string, boolean>
 
 export default function PlotComponent() {
-  const [since, setSince] = useState<string | null>(null)
-  const [rmsRaw, setRmsRaw] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] })
-  const [rmsFiltered, setRmsFiltered] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] })
+  const [seriesMap, setSeriesMap] = useState<SeriesMap>({})
+  const [visibilityMap, setVisibilityMap] = useState<VisibilityMap>({})
 
   const trpcClient = createTRPCProxyClient<AppRouter>({
     transformer: SuperJSON,
     links: [httpBatchLink({ url: getUrl() })],
   })
 
-  const initialQuery = trpc.rmsValues.getAllRmsValues.useQuery(undefined, {
-    onSuccess: (data) => {
-      const raw = data.rmsValues.map(r => ({
-        x: new Date(r.time).getTime() / 1000,
-        y: r.value,
-      }))
-      const filtered = data.filteredValues.map(r => ({
-        x: new Date(r.time).getTime() / 1000,
-        y: r.value,
-      }))
-
-      setRmsRaw({
-        x: raw.map(r => r.x).slice(-MAX_POINTS),
-        y: raw.map(r => r.y).slice(-MAX_POINTS),
+  const recentQuery = trpc.rmsValues.getRecentRmsValues.useQuery(MAX_POINTS, {
+    refetchInterval: 1000,
+    onSuccess: ({ rmsValues }) => {
+      const newMap: SeriesMap = {}
+      rmsValues.forEach(r => {
+        const phase = r.phase
+        const t = new Date(r.time).getTime() / 1000
+        if (!newMap[phase]) newMap[phase] = { x: [], y: [] }
+        newMap[phase].x.push(t)
+        newMap[phase].y.push(r.rms_value)
       })
-      setRmsFiltered({
-        x: filtered.map(r => r.x).slice(-MAX_POINTS),
-        y: filtered.map(r => r.y).slice(-MAX_POINTS),
+      Object.values(newMap).forEach(series => {
+        series.x = series.x.slice(-MAX_POINTS)
+        series.y = series.y.slice(-MAX_POINTS)
       })
-
-      const latestTime = [
-        ...data.rmsValues,
-        ...data.filteredValues,
-      ]
-        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0]?.time
-
-      if (latestTime) {
-        setSince(new Date(latestTime).toISOString())
-      }
+      setSeriesMap(newMap)
+      setVisibilityMap(prev => {
+        const updated: VisibilityMap = { ...prev }
+        Object.keys(newMap).forEach(phase => {
+          if (!(phase in updated)) updated[phase] = true
+        })
+        return updated
+      })
     },
   })
 
-  useEffect(() => {
-    if (!since) return
+  if (recentQuery.isLoading) return <div>Loading...</div>
+  if (recentQuery.error) return <div>Error: {recentQuery.error.message}</div>
 
-    const interval = setInterval(async () => {
-      try {
-        const res = await trpcClient.rmsValues.getRmsValuesSince.query({ since })
-        if (!res.rmsValues.length) return
-
-        const newRaw = res.rmsValues.filter(r => !r.filtered)
-        const newFiltered = res.rmsValues.filter(r => r.filtered)
-
-        setRmsRaw(prev => {
-          const xs = [...prev.x, ...newRaw.map(r => new Date(r.time).getTime() / 1000)]
-          const ys = [...prev.y, ...newRaw.map(r => r.value)]
-          return {
-            x: xs.slice(-MAX_POINTS),
-            y: ys.slice(-MAX_POINTS),
-          }
-        })
-
-        setRmsFiltered(prev => {
-          const xs = [...prev.x, ...newFiltered.map(r => new Date(r.time).getTime() / 1000)]
-          const ys = [...prev.y, ...newFiltered.map(r => r.value)]
-          return {
-            x: xs.slice(-MAX_POINTS),
-            y: ys.slice(-MAX_POINTS),
-          }
-        })
-
-        const latest = res.rmsValues.at(-1)?.time
-        if (latest) {
-          setSince(new Date(latest).toISOString())
-        }
-      } catch (err) {
-        console.error('Polling error:', err)
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [since, trpcClient])
-
-  if (initialQuery.isLoading) return <div>Loading...</div>
-  if (initialQuery.error) return <div>Error: {initialQuery.error.message}</div>
-
-  const xMinRaw = Math.min(...rmsRaw.x)
-  const xMaxRaw = Math.max(...rmsRaw.x)
-  const xPadRaw = (xMaxRaw - xMinRaw) * PADDING_RATIO_X
-
-  const yMinRaw = Math.min(...rmsRaw.y)
-  const yMaxRaw = Math.max(...rmsRaw.y)
-  const yPadRaw = (yMaxRaw - yMinRaw) * PADDING_RATIO_Y
-
-  const xMinF = Math.min(...rmsFiltered.x)
-  const xMaxF = Math.max(...rmsFiltered.x)
-  const xPadF = (xMaxF - xMinF) * PADDING_RATIO_X
-
-  const yMinF = Math.min(...rmsFiltered.y)
-  const yMaxF = Math.max(...rmsFiltered.y)
-  const yPadF = (yMaxF - yMinF) * PADDING_RATIO_Y
+  const togglePhase = (phase: string) => {
+    setVisibilityMap(prev => ({ ...prev, [phase]: !prev[phase] }))
+  }
 
   return (
-    <div className="flex flex-col gap-8 items-center w-full">
-      <Plot
-        data={[{
-          type: 'scattergl',
-          x: rmsRaw.x,
-          y: rmsRaw.y,
-          mode: 'lines',
-          name: 'Unfiltered',
-        }]}
-        layout={{
-          xaxis: {
-            title: { text: 'Time [s]' },
-            zeroline: false,
-            autorange: false,
-            range: [xMinRaw - xPadRaw, xMaxRaw + xPadRaw],
-          },
-          yaxis: {
-            title: { text: 'Voltage [V]' },
-            zeroline: false,
-            autorange: false,
-            range: [yMinRaw - yPadRaw, yMaxRaw + yPadRaw],
-          },
-          title: { text: 'RMS - without noise', x: 0.5 },
-          margin: { t: 50, b: 40, l: 60, r: 20 },
-          width: 900,
-          height: 300,
-        }}
-        config={{ displayModeBar: false }}
-      />
+    <div className="flex flex-col gap-8 items-center w-full overflow-y-scroll">
+      {/* Visibility controls */}
+      <div className="flex gap-4 mb-4">
+        {Object.keys(seriesMap).map(phase => (
+          <label key={phase} className="flex items-center">
+            <input
+              type="checkbox"
+              checked={visibilityMap[phase] ?? true}
+              onChange={() => togglePhase(phase)}
+              className="mr-2"
+            />
+            <span>Phase {phase}</span>
+          </label>
+        ))}
+      </div>
 
-      <Plot
-        data={[{
-          type: 'scattergl',
-          x: rmsFiltered.x,
-          y: rmsFiltered.y,
-          mode: 'lines',
-          name: 'Filtered',
-          line: { shape: 'hv' },
-        }]}
-        layout={{
-          xaxis: {
-            title: { text: 'Time [s]' },
-            zeroline: false,
-            autorange: false,
-            range: [xMinF - xPadF, xMaxF + xPadF],
-          },
-          yaxis: {
-            title: { text: 'Voltage [V]' },
-            zeroline: false,
-            autorange: false,
-            range: [yMinF - yPadF, yMaxF + yPadF],
-          },
-          title: { text: 'RMS - With Noise', x: 0.5 },
-          margin: { t: 50, b: 40, l: 60, r: 20 },
-          width: 900,
-          height: 300,
-        }}
-        config={{ displayModeBar: false }}
-      />
+      {/* Plots */}
+      {Object.entries(seriesMap)
+        .filter(([phase]) => visibilityMap[phase] ?? true)
+        .map(([phase, serie]) => {
+          const xMin = Math.min(...serie.x)
+          const xMax = Math.max(...serie.x)
+          const xPad = (xMax - xMin) * PADDING_RATIO_X
+          const yMin = Math.min(...serie.y)
+          const yMax = Math.max(...serie.y)
+          const yPad = (yMax - yMin) * PADDING_RATIO_Y
+
+          return (
+            <div key={phase} className="flex flex-col items-center w-full space-y-2">
+              <button onClick={() => togglePhase(phase)} className="font-bold border border-white px-2 py-1">
+                Phase {phase}{' '}
+                <span className={`inline-block transform duration-300 ${!visibilityMap[phase] ? ' -rotate-90' : ''}`}>
+                  ↓
+                </span>
+              </button>
+              {visibilityMap[phase] && (
+                <Plot
+                  data={[
+                    {
+                      type: 'scattergl',
+                      x: serie.x,
+                      y: serie.y,
+                      mode: 'lines',
+                      name: `Phase ${phase}`,
+                    },
+                  ]}
+                  layout={{
+                    xaxis: { title: { text: 'Time [s]' }, zeroline: false, autorange: false, range: [xMin - xPad, xMax + xPad] },
+                    yaxis: { title: { text: 'Voltage [V]' }, zeroline: false, autorange: false, range: [yMin - yPad, yMax + yPad] },
+                    title: { text: `RMS - Phase ${phase}`, x: 0.5 },
+                    margin: { t: 50, b: 40, l: 60, r: 20 },
+                    width: 900,
+                    height: 300,
+                  }}
+                  config={{ displayModeBar: false }}
+                />
+              )}
+            </div>
+          )
+        })}
     </div>
   )
 }

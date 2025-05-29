@@ -20,7 +20,7 @@ export const GooseSettingScalarFieldEnumSchema = z.enum(['id','vlanPriority','vl
 
 export const SampledValuesSettingScalarFieldEnumSchema = z.enum(['id','appId','ethernetInterface','dstAddressCheck','threshold','createdAt','updatedAt']);
 
-export const SampledValueScalarFieldEnumSchema = z.enum(['id','time','value','filtered']);
+export const SampledValueScalarFieldEnumSchema = z.enum(['id','time','app_id','phase','rms_value']);
 
 export const SortOrderSchema = z.enum(['asc','desc']);
 
@@ -130,8 +130,9 @@ export type SampledValuesSetting = z.infer<typeof SampledValuesSettingSchema>
 export const SampledValueSchema = z.object({
   id: z.number().int(),
   time: z.coerce.date(),
-  value: z.number(),
-  filtered: z.boolean(),
+  app_id: z.string(),
+  phase: z.number().int(),
+  rms_value: z.number(),
 })
 
 export type SampledValue = z.infer<typeof SampledValueSchema>
@@ -230,8 +231,9 @@ export const SampledValuesSettingSelectSchema: z.ZodType<Prisma.SampledValuesSet
 export const SampledValueSelectSchema: z.ZodType<Prisma.SampledValueSelect> = z.object({
   id: z.boolean().optional(),
   time: z.boolean().optional(),
-  value: z.boolean().optional(),
-  filtered: z.boolean().optional(),
+  app_id: z.boolean().optional(),
+  phase: z.boolean().optional(),
+  rms_value: z.boolean().optional(),
 }).strict()
 
 
@@ -534,15 +536,17 @@ export const SampledValueWhereInputSchema: z.ZodType<Prisma.SampledValueWhereInp
   NOT: z.union([ z.lazy(() => SampledValueWhereInputSchema),z.lazy(() => SampledValueWhereInputSchema).array() ]).optional(),
   id: z.union([ z.lazy(() => IntFilterSchema),z.number() ]).optional(),
   time: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
-  value: z.union([ z.lazy(() => FloatFilterSchema),z.number() ]).optional(),
-  filtered: z.union([ z.lazy(() => BoolFilterSchema),z.boolean() ]).optional(),
+  app_id: z.union([ z.lazy(() => StringFilterSchema),z.string() ]).optional(),
+  phase: z.union([ z.lazy(() => IntFilterSchema),z.number() ]).optional(),
+  rms_value: z.union([ z.lazy(() => FloatFilterSchema),z.number() ]).optional(),
 }).strict();
 
 export const SampledValueOrderByWithRelationInputSchema: z.ZodType<Prisma.SampledValueOrderByWithRelationInput> = z.object({
   id: z.lazy(() => SortOrderSchema).optional(),
   time: z.lazy(() => SortOrderSchema).optional(),
-  value: z.lazy(() => SortOrderSchema).optional(),
-  filtered: z.lazy(() => SortOrderSchema).optional()
+  app_id: z.lazy(() => SortOrderSchema).optional(),
+  phase: z.lazy(() => SortOrderSchema).optional(),
+  rms_value: z.lazy(() => SortOrderSchema).optional()
 }).strict();
 
 export const SampledValueWhereUniqueInputSchema: z.ZodType<Prisma.SampledValueWhereUniqueInput> = z.object({
@@ -554,15 +558,17 @@ export const SampledValueWhereUniqueInputSchema: z.ZodType<Prisma.SampledValueWh
   OR: z.lazy(() => SampledValueWhereInputSchema).array().optional(),
   NOT: z.union([ z.lazy(() => SampledValueWhereInputSchema),z.lazy(() => SampledValueWhereInputSchema).array() ]).optional(),
   time: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
-  value: z.union([ z.lazy(() => FloatFilterSchema),z.number() ]).optional(),
-  filtered: z.union([ z.lazy(() => BoolFilterSchema),z.boolean() ]).optional(),
+  app_id: z.union([ z.lazy(() => StringFilterSchema),z.string() ]).optional(),
+  phase: z.union([ z.lazy(() => IntFilterSchema),z.number().int() ]).optional(),
+  rms_value: z.union([ z.lazy(() => FloatFilterSchema),z.number() ]).optional(),
 }).strict());
 
 export const SampledValueOrderByWithAggregationInputSchema: z.ZodType<Prisma.SampledValueOrderByWithAggregationInput> = z.object({
   id: z.lazy(() => SortOrderSchema).optional(),
   time: z.lazy(() => SortOrderSchema).optional(),
-  value: z.lazy(() => SortOrderSchema).optional(),
-  filtered: z.lazy(() => SortOrderSchema).optional(),
+  app_id: z.lazy(() => SortOrderSchema).optional(),
+  phase: z.lazy(() => SortOrderSchema).optional(),
+  rms_value: z.lazy(() => SortOrderSchema).optional(),
   _count: z.lazy(() => SampledValueCountOrderByAggregateInputSchema).optional(),
   _avg: z.lazy(() => SampledValueAvgOrderByAggregateInputSchema).optional(),
   _max: z.lazy(() => SampledValueMaxOrderByAggregateInputSchema).optional(),
@@ -576,8 +582,9 @@ export const SampledValueScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.
   NOT: z.union([ z.lazy(() => SampledValueScalarWhereWithAggregatesInputSchema),z.lazy(() => SampledValueScalarWhereWithAggregatesInputSchema).array() ]).optional(),
   id: z.union([ z.lazy(() => IntWithAggregatesFilterSchema),z.number() ]).optional(),
   time: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema),z.coerce.date() ]).optional(),
-  value: z.union([ z.lazy(() => FloatWithAggregatesFilterSchema),z.number() ]).optional(),
-  filtered: z.union([ z.lazy(() => BoolWithAggregatesFilterSchema),z.boolean() ]).optional(),
+  app_id: z.union([ z.lazy(() => StringWithAggregatesFilterSchema),z.string() ]).optional(),
+  phase: z.union([ z.lazy(() => IntWithAggregatesFilterSchema),z.number() ]).optional(),
+  rms_value: z.union([ z.lazy(() => FloatWithAggregatesFilterSchema),z.number() ]).optional(),
 }).strict();
 
 export const UserCreateInputSchema: z.ZodType<Prisma.UserCreateInput> = z.object({
@@ -879,48 +886,55 @@ export const SampledValuesSettingUncheckedUpdateManyInputSchema: z.ZodType<Prism
 
 export const SampledValueCreateInputSchema: z.ZodType<Prisma.SampledValueCreateInput> = z.object({
   time: z.coerce.date(),
-  value: z.number(),
-  filtered: z.boolean().optional()
+  app_id: z.string(),
+  phase: z.number().int(),
+  rms_value: z.number()
 }).strict();
 
 export const SampledValueUncheckedCreateInputSchema: z.ZodType<Prisma.SampledValueUncheckedCreateInput> = z.object({
   id: z.number().int().optional(),
   time: z.coerce.date(),
-  value: z.number(),
-  filtered: z.boolean().optional()
+  app_id: z.string(),
+  phase: z.number().int(),
+  rms_value: z.number()
 }).strict();
 
 export const SampledValueUpdateInputSchema: z.ZodType<Prisma.SampledValueUpdateInput> = z.object({
   time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
-  filtered: z.union([ z.boolean(),z.lazy(() => BoolFieldUpdateOperationsInputSchema) ]).optional(),
+  app_id: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  phase: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
+  rms_value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
 }).strict();
 
 export const SampledValueUncheckedUpdateInputSchema: z.ZodType<Prisma.SampledValueUncheckedUpdateInput> = z.object({
   id: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
-  filtered: z.union([ z.boolean(),z.lazy(() => BoolFieldUpdateOperationsInputSchema) ]).optional(),
+  app_id: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  phase: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
+  rms_value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
 }).strict();
 
 export const SampledValueCreateManyInputSchema: z.ZodType<Prisma.SampledValueCreateManyInput> = z.object({
   id: z.number().int().optional(),
   time: z.coerce.date(),
-  value: z.number(),
-  filtered: z.boolean().optional()
+  app_id: z.string(),
+  phase: z.number().int(),
+  rms_value: z.number()
 }).strict();
 
 export const SampledValueUpdateManyMutationInputSchema: z.ZodType<Prisma.SampledValueUpdateManyMutationInput> = z.object({
   time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
-  filtered: z.union([ z.boolean(),z.lazy(() => BoolFieldUpdateOperationsInputSchema) ]).optional(),
+  app_id: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  phase: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
+  rms_value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
 }).strict();
 
 export const SampledValueUncheckedUpdateManyInputSchema: z.ZodType<Prisma.SampledValueUncheckedUpdateManyInput> = z.object({
   id: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
-  filtered: z.union([ z.boolean(),z.lazy(() => BoolFieldUpdateOperationsInputSchema) ]).optional(),
+  app_id: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  phase: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
+  rms_value: z.union([ z.number(),z.lazy(() => FloatFieldUpdateOperationsInputSchema) ]).optional(),
 }).strict();
 
 export const StringFilterSchema: z.ZodType<Prisma.StringFilter> = z.object({
@@ -1269,32 +1283,37 @@ export const FloatWithAggregatesFilterSchema: z.ZodType<Prisma.FloatWithAggregat
 export const SampledValueCountOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueCountOrderByAggregateInput> = z.object({
   id: z.lazy(() => SortOrderSchema).optional(),
   time: z.lazy(() => SortOrderSchema).optional(),
-  value: z.lazy(() => SortOrderSchema).optional(),
-  filtered: z.lazy(() => SortOrderSchema).optional()
+  app_id: z.lazy(() => SortOrderSchema).optional(),
+  phase: z.lazy(() => SortOrderSchema).optional(),
+  rms_value: z.lazy(() => SortOrderSchema).optional()
 }).strict();
 
 export const SampledValueAvgOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueAvgOrderByAggregateInput> = z.object({
   id: z.lazy(() => SortOrderSchema).optional(),
-  value: z.lazy(() => SortOrderSchema).optional()
+  phase: z.lazy(() => SortOrderSchema).optional(),
+  rms_value: z.lazy(() => SortOrderSchema).optional()
 }).strict();
 
 export const SampledValueMaxOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueMaxOrderByAggregateInput> = z.object({
   id: z.lazy(() => SortOrderSchema).optional(),
   time: z.lazy(() => SortOrderSchema).optional(),
-  value: z.lazy(() => SortOrderSchema).optional(),
-  filtered: z.lazy(() => SortOrderSchema).optional()
+  app_id: z.lazy(() => SortOrderSchema).optional(),
+  phase: z.lazy(() => SortOrderSchema).optional(),
+  rms_value: z.lazy(() => SortOrderSchema).optional()
 }).strict();
 
 export const SampledValueMinOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueMinOrderByAggregateInput> = z.object({
   id: z.lazy(() => SortOrderSchema).optional(),
   time: z.lazy(() => SortOrderSchema).optional(),
-  value: z.lazy(() => SortOrderSchema).optional(),
-  filtered: z.lazy(() => SortOrderSchema).optional()
+  app_id: z.lazy(() => SortOrderSchema).optional(),
+  phase: z.lazy(() => SortOrderSchema).optional(),
+  rms_value: z.lazy(() => SortOrderSchema).optional()
 }).strict();
 
 export const SampledValueSumOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueSumOrderByAggregateInput> = z.object({
   id: z.lazy(() => SortOrderSchema).optional(),
-  value: z.lazy(() => SortOrderSchema).optional()
+  phase: z.lazy(() => SortOrderSchema).optional(),
+  rms_value: z.lazy(() => SortOrderSchema).optional()
 }).strict();
 
 export const SessionCreateNestedManyWithoutUserInputSchema: z.ZodType<Prisma.SessionCreateNestedManyWithoutUserInput> = z.object({

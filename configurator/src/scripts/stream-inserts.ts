@@ -2,12 +2,14 @@ import { PrismaClient } from '@prisma/client'
 
 const db = new PrismaClient()
 
-const START_TIME = new Date('1970-01-01T00:00:00.000Z')
-const STEP_MS = 1 
-const REAL_SLEEP_MS = 10 
-const STEP_AT_MS = 20 
+const APP_ID         = 'test-stream'
+const PHASES         = [1, 2, 3] as const
+
+// parametrizarea fluxului
+const STEP_AT_MS     = 20      // dupa cati pasi sa creasca amplitudinea
 const STEP_AMPLITUDE = 234
-const NOISE_SIGMA = 4    
+const NOISE_SIGMA    = 4       // deviatie standard pentru zgomot
+const REAL_SLEEP_MS  = 10      // cat asteptam real intre batch-uri
 
 function gaussRandom(): number {
   let u = 0, v = 0
@@ -21,31 +23,35 @@ function sleep(ms: number) {
 }
 
 async function main() {
-  console.log(`🚀 Starting stream from ${START_TIME.toISOString()}`)
+  console.log(`🚀 Starting real-time stream`)
 
   let i = 0
   while (true) {
-    const t = new Date(START_TIME.getTime() + i * STEP_MS)
+    // Timpul curent
+    const t = new Date()
 
     const ideal = i < STEP_AT_MS ? 0 : STEP_AMPLITUDE
 
-    const noisy = parseFloat(
-      (ideal + gaussRandom() * NOISE_SIGMA).toFixed(6)
-    )
-
-    await db.sampledValue.createMany({
-      data: [
-        { time: t, value: ideal,   filtered: false },
-        { time: t, value: noisy,   filtered: true  },
-      ],
+    const batchData = PHASES.map(phase => {
+      const noisy = parseFloat((ideal + gaussRandom() * NOISE_SIGMA).toFixed(6))
+      return {
+        app_id:    APP_ID,
+        time:      t,
+        phase:     phase,
+        rms_value: noisy,
+      }
     })
+
+    await db.sampledValue.createMany({ data: batchData })
 
     i++
     await sleep(REAL_SLEEP_MS)
   }
 }
 
-main().catch(err => {
-  console.error('❌ Stream error:', err)
-  process.exit(1)
-})
+main()
+  .catch(err => {
+    console.error('❌ Stream error:', err)
+    process.exit(1)
+  })
+  .finally(() => db.$disconnect())
