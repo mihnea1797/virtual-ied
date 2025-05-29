@@ -236,7 +236,10 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                 int32_t filteredValue = butterFilter[index].filter(voltageMeasurements[index]);
                 double rms = rmsObject[index].computeValue(filteredValue);
 
-                storeRMSinDatabase(params->appId, index, rms);
+                if(dbConn_)
+                {
+                    storeRMSinDatabase(params->appId, index, rms);
+                }
 
                 // double rms = rmsObject[index].computeValue(voltageMeasurements[index]);
 
@@ -260,7 +263,10 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                 int32_t filteredValue = butterFilter[index].filter(currentMeasurements[index]);
                 double rms = rmsObject[index].computeValue(filteredValue);
 
-                storeRMSinDatabase(params->appId, index, rms);
+                if(dbConn_)
+                {
+                    storeRMSinDatabase(params->appId, index, rms);
+                }
 
                 // double rms = rmsObject[index].computeValue(currentMeasurements[index]);
                 
@@ -291,9 +297,15 @@ void SampledValuesSubscriberWrapper::setButterFilter(const nlohmann::json &filte
 
 void SampledValuesSubscriberWrapper::setPostgresConnection(const nlohmann::json &postgresSqlProperties)
 {
-    dbConn_ = std::make_unique<pqxx::connection>(ParsePostgresSQL(postgresSqlProperties));
-}
+    try {
+        dbConn_ = std::make_unique<pqxx::connection>(ParsePostgresSQL(postgresSqlProperties));
+    }
+    catch(...) {
+        printf("Unable to connect to database! Proceeding without connection...\n");
+        dbConn_ = nullptr;
+    }
 
+}
 void SampledValuesSubscriberWrapper::setFrequencyTracker()
 {
     frequencyTracker.push_back(FrequencyTracking());
