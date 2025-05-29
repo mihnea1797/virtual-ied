@@ -17,6 +17,7 @@ extern "C"
 // Macro used for defining the number of phases
 #define NUMBER_OF_PHASES ((uint32_t)3)
 
+// Enum describing the possible formats of SV data
 enum class DataFormat
 {
     onlyV,
@@ -48,31 +49,37 @@ private:
     bool listenerSet = false;
     ListenerParameters _listenerParams;
 
-    static std::unique_ptr<pqxx::connection> dbConn_;
+    void ParseSettings(const nlohmann::json &settings);
 
+    // Static attributes used inside of SvUpdateListener()
+    static std::unique_ptr<pqxx::connection> dbConn_;
     static std::vector<RmsComputationObject> rmsObject;
     static std::vector<ButterworthFilter> butterFilter;
     static std::vector<FrequencyTracking> frequencyTracker;
-
     static DataFormat format;
-    static bool parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu);
-    static void SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu);
-    void ParseSettings(const nlohmann::json &settings);
+
+    // Helper functions used for static members population
     static std::string ParsePostgresSQL(const nlohmann::json &postgresSqlPorperties);
+    static bool parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu);
+
+    // Helper function used for writing data to DataBase inside of SvUpdateListener()
+    static void storeRMSinDatabase(uint16_t appId, uint32_t index, double rms);
+
+    // Callback function executed after an SV has been received
+    static void SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu);
 
 public:
     SampledValuesSubscriberWrapper(const nlohmann::json &sampleValuesSettings);
     ~SampledValuesSubscriberWrapper();
 
+    void Start();
+    void SetListener(std::function<void(bool)> goosePublishMessageFunction);
+    void Print();
+
+    // Setters for the static attributes
     static void setRmsObject(const nlohmann::json &signalProperties);
     static void setButterFilter(const nlohmann::json &filterProperties);
     static void setFrequencyTracker();
     static void setDataFormat(const nlohmann::json &dataFormat);
     static void setPostgresConnection(const nlohmann::json &postgresSqlProperties);
-
-    void Start();
-    void SetListener(std::function<void(bool)> goosePublishMessageFunction);
-    void Print();
-
-    static void storeRMSinDatabase(uint16_t appId, uint32_t index, double rms);
 };
