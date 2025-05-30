@@ -5,6 +5,7 @@
             "name": "vIED",
             "type": "cppdbg",
             "request": "launch",
+            "preLaunchTask": "cmake build",
             "program": "/opt/virtual-merging-unit/merging-unit",
             "args": [],
             "stopAtEntry": false,
