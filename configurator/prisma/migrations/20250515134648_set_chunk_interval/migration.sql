@@ -1,1 +1,0 @@
-SELECT set_chunk_time_interval('sensor_data', INTERVAL '5 minutes');

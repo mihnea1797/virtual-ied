@@ -53,20 +53,38 @@ CREATE TABLE "SampledValuesSetting" (
 );
 
 -- CreateTable
-CREATE TABLE "sensor_data" (
+CREATE TABLE "rms_voltage" (
     "id" SERIAL NOT NULL,
     "time" TIMESTAMP(3) NOT NULL,
-    "value" DOUBLE PRECISION NOT NULL,
-    "settingId" TEXT NOT NULL,
+    "app_id" TEXT NOT NULL,
+    "phase" INTEGER NOT NULL,
+    "rms_value" DOUBLE PRECISION NOT NULL,
 
-    CONSTRAINT "sensor_data_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "rms_voltage_pkey" PRIMARY KEY ("id","time")
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
+-- CreateIndex
+CREATE INDEX "rms_voltage_app_id_phase_time_idx" ON "rms_voltage"("app_id", "phase", "time");
+
 -- AddForeignKey
 ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "sensor_data" ADD CONSTRAINT "sensor_data_settingId_fkey" FOREIGN KEY ("settingId") REFERENCES "SampledValuesSetting"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+SELECT create_hypertable('rms_voltage', 'time');
+
+SELECT set_chunk_time_interval('rms_voltage', INTERVAL '5 minutes');
+
+CREATE OR REPLACE FUNCTION notify_rms_insert() RETURNS trigger AS $$
+BEGIN
+  PERFORM pg_notify('rms_channel', 'new_data');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER rms_insert_trigger
+AFTER INSERT ON rms_voltage
+FOR EACH STATEMENT
+EXECUTE FUNCTION notify_rms_insert();

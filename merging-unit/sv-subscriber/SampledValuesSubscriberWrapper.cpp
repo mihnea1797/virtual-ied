@@ -374,10 +374,10 @@ std::string SampledValuesSubscriberWrapper::ParsePostgresSQL(const nlohmann::jso
 void SampledValuesSubscriberWrapper::storeRMSinDatabase(uint16_t appId, uint32_t index, double rms)
 {
     std::string query =
-        "INSERT INTO rms_voltage (time, app_id, phase, rms_value, filtered) "
-        "VALUES (NOW(), $1, $2, $3, $4);";
+        "INSERT INTO rms_voltage (time, app_id, phase, rms_value) "
+        "VALUES (NOW(), $1, $2, $3);";
 
     pqxx::work txn(*dbConn_);
-    txn.exec_params(query, std::to_string(appId), index, rms, true);
+    txn.exec_params(query, std::to_string(appId), index, rms);
     txn.commit();
 }

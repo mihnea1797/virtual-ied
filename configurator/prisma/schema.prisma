@@ -58,12 +58,13 @@ model SampledValuesSetting {
 }
 
 model SampledValue {
-  id         Int      @id @default(autoincrement())
+  id         Int      @default(autoincrement())
   time       DateTime
   app_id     String
   phase      Int
   rms_value  Float
 
+  @@id([id, time])
   @@map("rms_voltage")
   @@index([app_id, phase, time])
 }

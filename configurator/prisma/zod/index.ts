@@ -550,13 +550,14 @@ export const SampledValueOrderByWithRelationInputSchema: z.ZodType<Prisma.Sample
 }).strict();
 
 export const SampledValueWhereUniqueInputSchema: z.ZodType<Prisma.SampledValueWhereUniqueInput> = z.object({
-  id: z.number().int()
+  id_time: z.lazy(() => SampledValueIdTimeCompoundUniqueInputSchema)
 })
 .and(z.object({
-  id: z.number().int().optional(),
+  id_time: z.lazy(() => SampledValueIdTimeCompoundUniqueInputSchema).optional(),
   AND: z.union([ z.lazy(() => SampledValueWhereInputSchema),z.lazy(() => SampledValueWhereInputSchema).array() ]).optional(),
   OR: z.lazy(() => SampledValueWhereInputSchema).array().optional(),
   NOT: z.union([ z.lazy(() => SampledValueWhereInputSchema),z.lazy(() => SampledValueWhereInputSchema).array() ]).optional(),
+  id: z.union([ z.lazy(() => IntFilterSchema),z.number().int() ]).optional(),
   time: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
   app_id: z.union([ z.lazy(() => StringFilterSchema),z.string() ]).optional(),
   phase: z.union([ z.lazy(() => IntFilterSchema),z.number().int() ]).optional(),
@@ -885,6 +886,7 @@ export const SampledValuesSettingUncheckedUpdateManyInputSchema: z.ZodType<Prism
 }).strict();
 
 export const SampledValueCreateInputSchema: z.ZodType<Prisma.SampledValueCreateInput> = z.object({
+  id: z.number().int().optional(),
   time: z.coerce.date(),
   app_id: z.string(),
   phase: z.number().int(),
@@ -900,6 +902,7 @@ export const SampledValueUncheckedCreateInputSchema: z.ZodType<Prisma.SampledVal
 }).strict();
 
 export const SampledValueUpdateInputSchema: z.ZodType<Prisma.SampledValueUpdateInput> = z.object({
+  id: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   app_id: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   phase: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
@@ -923,6 +926,7 @@ export const SampledValueCreateManyInputSchema: z.ZodType<Prisma.SampledValueCre
 }).strict();
 
 export const SampledValueUpdateManyMutationInputSchema: z.ZodType<Prisma.SampledValueUpdateManyMutationInput> = z.object({
+  id: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   time: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   app_id: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   phase: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
@@ -1278,6 +1282,11 @@ export const FloatWithAggregatesFilterSchema: z.ZodType<Prisma.FloatWithAggregat
   _sum: z.lazy(() => NestedFloatFilterSchema).optional(),
   _min: z.lazy(() => NestedFloatFilterSchema).optional(),
   _max: z.lazy(() => NestedFloatFilterSchema).optional()
+}).strict();
+
+export const SampledValueIdTimeCompoundUniqueInputSchema: z.ZodType<Prisma.SampledValueIdTimeCompoundUniqueInput> = z.object({
+  id: z.number(),
+  time: z.coerce.date()
 }).strict();
 
 export const SampledValueCountOrderByAggregateInputSchema: z.ZodType<Prisma.SampledValueCountOrderByAggregateInput> = z.object({

@@ -84,7 +84,6 @@ export default function AddConfigFileButton() {
         setFileGooseSettings(json.gooseSettings)
         setFileSampledSettings(json.sampledValuesSettings)
         setFileName(file.name)
-        console.log("json este: ",json)
       } catch {
         alert("File doesn't have a valid JSON")
       }
@@ -94,7 +93,6 @@ export default function AddConfigFileButton() {
 
   useEffect(() => {
     if (!fileGooseSettings || !fileSampledSettings ) return
-    console.log("aici")
     if(sampledValuesSettings?.id){
       updateSampledValuesSetting({...fileSampledSettings, id: sampledValuesSettings.id})
     }
