@@ -310,7 +310,7 @@ export const SessionWhereInputSchema: z.ZodType<Prisma.SessionWhereInput> = z.ob
   id: z.union([ z.lazy(() => StringFilterSchema),z.string() ]).optional(),
   userId: z.union([ z.lazy(() => StringFilterSchema),z.string() ]).optional(),
   expiresAt: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
-  user: z.union([ z.lazy(() => UserScalarRelationFilterSchema),z.lazy(() => UserWhereInputSchema) ]).optional(),
+  user: z.union([ z.lazy(() => UserRelationFilterSchema),z.lazy(() => UserWhereInputSchema) ]).optional(),
 }).strict();
 
 export const SessionOrderByWithRelationInputSchema: z.ZodType<Prisma.SessionOrderByWithRelationInput> = z.object({
@@ -330,7 +330,7 @@ export const SessionWhereUniqueInputSchema: z.ZodType<Prisma.SessionWhereUniqueI
   NOT: z.union([ z.lazy(() => SessionWhereInputSchema),z.lazy(() => SessionWhereInputSchema).array() ]).optional(),
   userId: z.union([ z.lazy(() => StringFilterSchema),z.string() ]).optional(),
   expiresAt: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
-  user: z.union([ z.lazy(() => UserScalarRelationFilterSchema),z.lazy(() => UserWhereInputSchema) ]).optional(),
+  user: z.union([ z.lazy(() => UserRelationFilterSchema),z.lazy(() => UserWhereInputSchema) ]).optional(),
 }).strict());
 
 export const SessionOrderByWithAggregationInputSchema: z.ZodType<Prisma.SessionOrderByWithAggregationInput> = z.object({
@@ -1054,7 +1054,7 @@ export const DateTimeFilterSchema: z.ZodType<Prisma.DateTimeFilter> = z.object({
   not: z.union([ z.coerce.date(),z.lazy(() => NestedDateTimeFilterSchema) ]).optional(),
 }).strict();
 
-export const UserScalarRelationFilterSchema: z.ZodType<Prisma.UserScalarRelationFilter> = z.object({
+export const UserRelationFilterSchema: z.ZodType<Prisma.UserRelationFilter> = z.object({
   is: z.lazy(() => UserWhereInputSchema).optional(),
   isNot: z.lazy(() => UserWhereInputSchema).optional()
 }).strict();
@@ -2043,18 +2043,10 @@ export const UserUpdateArgsSchema: z.ZodType<Prisma.UserUpdateArgs> = z.object({
 export const UserUpdateManyArgsSchema: z.ZodType<Prisma.UserUpdateManyArgs> = z.object({
   data: z.union([ UserUpdateManyMutationInputSchema,UserUncheckedUpdateManyInputSchema ]),
   where: UserWhereInputSchema.optional(),
-  limit: z.number().optional(),
-}).strict() ;
-
-export const UserUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.UserUpdateManyAndReturnArgs> = z.object({
-  data: z.union([ UserUpdateManyMutationInputSchema,UserUncheckedUpdateManyInputSchema ]),
-  where: UserWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
 
 export const UserDeleteManyArgsSchema: z.ZodType<Prisma.UserDeleteManyArgs> = z.object({
   where: UserWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
 
 export const SessionCreateArgsSchema: z.ZodType<Prisma.SessionCreateArgs> = z.object({
@@ -2097,18 +2089,10 @@ export const SessionUpdateArgsSchema: z.ZodType<Prisma.SessionUpdateArgs> = z.ob
 export const SessionUpdateManyArgsSchema: z.ZodType<Prisma.SessionUpdateManyArgs> = z.object({
   data: z.union([ SessionUpdateManyMutationInputSchema,SessionUncheckedUpdateManyInputSchema ]),
   where: SessionWhereInputSchema.optional(),
-  limit: z.number().optional(),
-}).strict() ;
-
-export const SessionUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.SessionUpdateManyAndReturnArgs> = z.object({
-  data: z.union([ SessionUpdateManyMutationInputSchema,SessionUncheckedUpdateManyInputSchema ]),
-  where: SessionWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
 
 export const SessionDeleteManyArgsSchema: z.ZodType<Prisma.SessionDeleteManyArgs> = z.object({
   where: SessionWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
 
 export const GooseSettingCreateArgsSchema: z.ZodType<Prisma.GooseSettingCreateArgs> = z.object({
@@ -2147,18 +2131,10 @@ export const GooseSettingUpdateArgsSchema: z.ZodType<Prisma.GooseSettingUpdateAr
 export const GooseSettingUpdateManyArgsSchema: z.ZodType<Prisma.GooseSettingUpdateManyArgs> = z.object({
   data: z.union([ GooseSettingUpdateManyMutationInputSchema,GooseSettingUncheckedUpdateManyInputSchema ]),
   where: GooseSettingWhereInputSchema.optional(),
-  limit: z.number().optional(),
-}).strict() ;
-
-export const GooseSettingUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.GooseSettingUpdateManyAndReturnArgs> = z.object({
-  data: z.union([ GooseSettingUpdateManyMutationInputSchema,GooseSettingUncheckedUpdateManyInputSchema ]),
-  where: GooseSettingWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
 
 export const GooseSettingDeleteManyArgsSchema: z.ZodType<Prisma.GooseSettingDeleteManyArgs> = z.object({
   where: GooseSettingWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
 
 export const SampledValuesSettingCreateArgsSchema: z.ZodType<Prisma.SampledValuesSettingCreateArgs> = z.object({
@@ -2197,18 +2173,10 @@ export const SampledValuesSettingUpdateArgsSchema: z.ZodType<Prisma.SampledValue
 export const SampledValuesSettingUpdateManyArgsSchema: z.ZodType<Prisma.SampledValuesSettingUpdateManyArgs> = z.object({
   data: z.union([ SampledValuesSettingUpdateManyMutationInputSchema,SampledValuesSettingUncheckedUpdateManyInputSchema ]),
   where: SampledValuesSettingWhereInputSchema.optional(),
-  limit: z.number().optional(),
-}).strict() ;
-
-export const SampledValuesSettingUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.SampledValuesSettingUpdateManyAndReturnArgs> = z.object({
-  data: z.union([ SampledValuesSettingUpdateManyMutationInputSchema,SampledValuesSettingUncheckedUpdateManyInputSchema ]),
-  where: SampledValuesSettingWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
 
 export const SampledValuesSettingDeleteManyArgsSchema: z.ZodType<Prisma.SampledValuesSettingDeleteManyArgs> = z.object({
   where: SampledValuesSettingWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
 
 export const SampledValueCreateArgsSchema: z.ZodType<Prisma.SampledValueCreateArgs> = z.object({
@@ -2247,16 +2215,8 @@ export const SampledValueUpdateArgsSchema: z.ZodType<Prisma.SampledValueUpdateAr
 export const SampledValueUpdateManyArgsSchema: z.ZodType<Prisma.SampledValueUpdateManyArgs> = z.object({
   data: z.union([ SampledValueUpdateManyMutationInputSchema,SampledValueUncheckedUpdateManyInputSchema ]),
   where: SampledValueWhereInputSchema.optional(),
-  limit: z.number().optional(),
-}).strict() ;
-
-export const SampledValueUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.SampledValueUpdateManyAndReturnArgs> = z.object({
-  data: z.union([ SampledValueUpdateManyMutationInputSchema,SampledValueUncheckedUpdateManyInputSchema ]),
-  where: SampledValueWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
 
 export const SampledValueDeleteManyArgsSchema: z.ZodType<Prisma.SampledValueDeleteManyArgs> = z.object({
   where: SampledValueWhereInputSchema.optional(),
-  limit: z.number().optional(),
 }).strict() ;
