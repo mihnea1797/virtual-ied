@@ -25,8 +25,8 @@ export const rmsValuesRouter = router({
   getRmsValueById: publicProcedure
     .input(z.number().int())
     .query(async ({ input }) => {
-      const row = await getRmsValueById(input)
-      return { rmsValue: row }
+      const rows = await getRmsValueById(input)
+      return { rmsValues: rows }
     }),
 
   getLatestRmsValue: publicProcedure

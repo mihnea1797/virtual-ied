@@ -36,8 +36,10 @@ export async function ingestRMS(batchSize = 4, intervalMs = 1): Promise<void> {
   console.log(`→ Streaming ${unfilteredRows.length} points (unfiltered)`)
   for (let i = 0; i < unfilteredRows.length; i += batchSize) {
     const batch = unfilteredRows.slice(i, i + batchSize).map((row) => ({
-      ...row,
-      filtered: false,
+      time: row.time,
+      app_id: 'unfiltered',
+      phase: 1,
+      rms_value: row.value,
     }))
     await db.sampledValue.createMany({ data: batch })
     await sleep(intervalMs)
@@ -46,13 +48,14 @@ export async function ingestRMS(batchSize = 4, intervalMs = 1): Promise<void> {
   console.log(`→ Streaming ${filteredRows.length} points (filtered)`)
   for (let i = 0; i < filteredRows.length; i += batchSize) {
     const batch = filteredRows.slice(i, i + batchSize).map((row) => ({
-      ...row,
-      filtered: true,
+      time: row.time,
+      app_id: 'filtered',
+      phase: 1,
+      rms_value: row.value,
     }))
     await db.sampledValue.createMany({ data: batch })
     await sleep(intervalMs)
   }
-  
 
   console.log('✅ All test data inserted successfully.')
 }

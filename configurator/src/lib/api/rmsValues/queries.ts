@@ -13,9 +13,10 @@ export async function getAllRmsValues(
 
 export async function getRmsValueById(
   id: number
-): Promise<SampledValue | null> {
-  return db.sampledValue.findUnique({
+): Promise<SampledValue[]> {
+  return db.sampledValue.findMany({
     where: { id },
+    orderBy: { time: 'desc' }
   })
 }
 

@@ -30,7 +30,7 @@
             "command": "cmake",
             "args": [
                 "--build",
-                "/root/virtual-merging-unit/build",
+                "/root/vied/virtual-merging-unit/build",
                 "--config",
                 "Debug",
                 "--target",
