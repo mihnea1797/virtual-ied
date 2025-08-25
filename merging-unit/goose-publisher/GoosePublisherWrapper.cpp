@@ -63,7 +63,10 @@ void GoosePublisherWrapper::PublishMessage(bool value)
 
     LinkedList_destroyDeep(dataSetValues, (LinkedListValueDeleteFunction)MmsValue_delete);
 
-    printf("GOOSE message published due to threshold breach\n");
+    if(value)
+    {
+        printf("GOOSE message published due to threshold breach\n");
+    }
 }
 
 void GoosePublisherWrapper::Print()
