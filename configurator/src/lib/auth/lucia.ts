@@ -1,5 +1,4 @@
 import { cookies } from 'next/headers'
-import { cache } from 'react'
 
 import { type Session, type User, Lucia } from 'lucia'
 import { db } from "@/lib/db/index";
@@ -36,8 +35,7 @@ interface DatabaseUserAttributes {
   name: string;
 }
 
-export const validateRequest = cache(
-  async (): Promise<
+export const validateRequest = async (): Promise<
     { user: User; session: Session } | { user: null; session: null }
   > => {
     const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null
@@ -70,4 +68,3 @@ export const validateRequest = cache(
     } catch {}
     return result
   }
-)

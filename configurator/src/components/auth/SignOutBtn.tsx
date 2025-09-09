@@ -1,22 +1,26 @@
 "use client";
 
 import { Button } from "../ui/button";
-import { useFormStatus } from "react-dom";
 import { signOutAction } from "@/lib/actions/users";
+import { useTransition } from "react";
 
 export default function SignOutBtn() {
-  return (
-    <form action={signOutAction} className="w-full text-left">
-      <Btn />
-    </form>
-  );
-}
+  const [isPending, startTransition] = useTransition();
+  
+  const handleSignOut = () => {
+    startTransition(() => {
+      signOutAction();
+    });
+  };
 
-const Btn = () => {
-  const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} variant={"destructive"}>
-      Sign{pending ? "ing" : ""} out
+    <Button 
+      onClick={handleSignOut} 
+      disabled={isPending} 
+      variant={"destructive"}
+      className="w-full text-left"
+    >
+      Sign{isPending ? "ing" : ""} out
     </Button>
   );
-};
+}

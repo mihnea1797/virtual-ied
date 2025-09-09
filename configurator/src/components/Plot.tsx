@@ -1,66 +1,74 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { createTRPCProxyClient, httpBatchLink } from '@trpc/client'
-import SuperJSON from 'superjson'
 import { trpc } from '@/lib/trpc/client'
-import { getUrl } from '@/lib/trpc/utils'
-import type { AppRouter } from '@/lib/server/routers/_app'
 
-// Plotly loader
 const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
 
 const MAX_POINTS = 1000
 
-// shape of series data per phase
 interface SeriesData {
   x: Date[]
   y: number[]
 }
 
-type SeriesMap = Record<string, SeriesData>
-type VisibilityMap = Record<string, boolean>
+type SeriesMap = Record<string, Record<string, SeriesData>>
+type VisibilityMap = Record<string, Record<string, boolean>>
+function normalizeMeasurement(m: unknown): string {
+  if (typeof m === 'string') return m.trim().toUpperCase()
+  return String(m ?? '').toUpperCase()
+}
+function normalizePhase(p: unknown): string {
+  const s = String(p ?? '').trim()
+  return s || '1'
+}
 
 export default function PlotComponent() {
   const [seriesMap, setSeriesMap] = useState<SeriesMap>({})
   const [visibilityMap, setVisibilityMap] = useState<VisibilityMap>({})
 
-  const trpcClient = createTRPCProxyClient<AppRouter>({
-    transformer: SuperJSON,
-    links: [httpBatchLink({ url: getUrl() })],
-  })
-
   const recentQuery = trpc.rmsValues.getRecentRmsValues.useQuery(MAX_POINTS, {
     refetchInterval: 1000,
-    onSuccess: ({ rmsValues }) => {
-      console.log('Received RMS values:', rmsValues)
+    onSuccess: (data) => {
+      const rmsValues: Array<{
+        phase: string | number
+        measurement: string
+        time: string | number | Date
+        rms_value: number
+      }> = 'rmsValues' in data ? (data as any).rmsValues : (data as any)
+
       const newMap: SeriesMap = {}
 
-      rmsValues.forEach(r => {
-        const phase = String(r.phase)
+      for (const r of rmsValues) {
+        const m = normalizeMeasurement((r as any).measurement)
+        const p = normalizePhase(r.phase)
         const t = new Date(r.time)
-        if (!newMap[phase]) {
-          newMap[phase] = { x: [], y: [] }
-        }
-        newMap[phase].x.push(t)
-        newMap[phase].y.push(r.rms_value)
-      })
 
-      // keep only the last MAX_POINTS
-      Object.values(newMap).forEach(series => {
-        series.x = series.x.slice(-MAX_POINTS)
-        series.y = series.y.slice(-MAX_POINTS)
+        if (!newMap[m]) newMap[m] = {}
+        if (!newMap[m][p]) newMap[m][p] = { x: [], y: [] }
+
+        newMap[m][p].x.push(t)
+        newMap[m][p].y.push((r as any).rms_value)
+      }
+
+      Object.values(newMap).forEach((perPhase) => {
+        Object.values(perPhase).forEach((series) => {
+          series.x = series.x.slice(-MAX_POINTS)
+          series.y = series.y.slice(-MAX_POINTS)
+        })
       })
 
       setSeriesMap(newMap)
-      setVisibilityMap(prev => {
-        const updated: VisibilityMap = { ...prev }
-        Object.keys(newMap).forEach(phase => {
-          if (!(phase in updated)) {
-            updated[phase] = true
+
+      setVisibilityMap((prev) => {
+        const copy: VisibilityMap = { ...prev }
+        for (const m of Object.keys(newMap)) {
+          copy[m] ||= {}
+          for (const p of Object.keys(newMap[m])) {
+            if (!(p in copy[m])) copy[m][p] = true
           }
-        })
-        return updated
+        }
+        return copy
       })
     },
   })
@@ -68,77 +76,112 @@ export default function PlotComponent() {
   if (recentQuery.isLoading) return <div>Loading...</div>
   if (recentQuery.error) return <div>Error: {recentQuery.error.message}</div>
 
-  const togglePhase = (phase: string) => {
-    setVisibilityMap(prev => ({ ...prev, [phase]: !prev[phase] }))
+  const togglePhase = (measurement: string, phase: string) => {
+    setVisibilityMap((prev) => ({
+      ...prev,
+      [measurement]: {
+        ...(prev[measurement] || {}),
+        [phase]: !(prev[measurement]?.[phase] ?? true),
+      },
+    }))
   }
+
+  const toggleMeasurementAll = (measurement: string, value?: boolean) => {
+    setVisibilityMap((prev) => {
+      const current = prev[measurement] || {}
+      const nextVal =
+        value ?? !Object.values(current).every((v) => v ?? true)
+      const updated: Record<string, boolean> = {}
+      const phases = Object.keys(seriesMap[measurement] || {})
+      for (const p of phases) updated[p] = nextVal
+      return { ...prev, [measurement]: updated }
+    })
+  }
+
+  const measurements = Object.keys(seriesMap).sort()
 
   return (
     <div className="flex flex-col gap-8 items-center w-full overflow-y-auto">
-      {/* Visibility controls */}
-      <div className="flex gap-4 mb-4">
-        {Object.keys(seriesMap).map(phase => (
-          <label key={phase} className="flex items-center">
-            <input
-              type="checkbox"
-              checked={visibilityMap[phase] ?? true}
-              onChange={() => togglePhase(phase)}
-              className="mr-2"
-            />
-            <span>Phase {phase}</span>
-          </label>
-        ))}
+      <div className="flex w-full max-w-5xl space-x-4">
+        {measurements.map((m) => {
+          const phases = Object.keys(seriesMap[m] || {}).sort() 
+          const allVisible = phases.length
+            ? phases.every((p) => visibilityMap[m]?.[p] ?? true)
+            : true
+
+          return (
+            <div key={m} className="border border-white/20 rounded-xl p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-lg font-semibold">Measurement: {m}</div>
+                <button
+                  onClick={() => toggleMeasurementAll(m)}
+                  className="text-sm border border-white/40 px-2 py-1 rounded-md"
+                >
+                  {allVisible ? 'Hide all phases' : 'Show all phases'}
+                </button>
+              </div>
+              <div className="flex gap-2 flex-wrap w-full">
+                {phases.map((p) => (
+                  <label key={`${m}-${p}`} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={visibilityMap[m]?.[p] ?? true}
+                      onChange={() => togglePhase(m, p)}
+                      className="mr-2"
+                    />
+                    <span>{m} – Phase {p}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
-      {/* Plots */}
-      {Object.entries(seriesMap)
-        .filter(([phase]) => visibilityMap[phase] ?? true)
-        .map(([phase, serie]) => (
-          <div key={phase} className="flex flex-col items-center w-full space-y-2">
-            <button
-              onClick={() => togglePhase(phase)}
-              className="font-bold border border-white px-2 py-1"
-            >
-              Phase {phase}{' '}
-              <span
-                className={`inline-block transform duration-300 ${
-                  !visibilityMap[phase] ? '-rotate-90' : ''
-                }`}
-              >
-                ↓
-              </span>
-            </button>
+      <div className="w-full max-w-6xl space-y-10">
+        {measurements.map((m) => {
+          const perPhase = seriesMap[m]
+          const phases = Object.keys(perPhase || {}).sort()
 
-            {visibilityMap[phase] && (
+          const traces = phases
+            .filter((p) => visibilityMap[m]?.[p] ?? true)
+            .map((p) => ({
+              type: 'scattergl' as const,
+              x: perPhase[p].x,
+              y: perPhase[p].y,
+              mode: 'lines' as const,
+              name: `Phase ${p}`,
+            }))
+
+          if (traces.length === 0) return null
+
+          const yTitle = m === 'V' ? 'Voltage [V]' : m === 'C' ? 'Current [A]' : m
+
+          return (
+            <div key={`plot-${m}`} className="w-full">
               <Plot
-                data={[
-                  {
-                    type: 'scattergl',
-                    x: serie.x,
-                    y: serie.y,
-                    mode: 'lines',
-                    name: `Phase ${phase}`,
-                  },
-                ]}
+                data={traces}
                 layout={{
-                  title: { text: `RMS - Phase ${phase}`, x: 0.5 },
+                  title: { text: `RMS – ${m}`, x: 0.5 },
                   xaxis: {
                     title: { text: 'Time' },
                     type: 'date',
                     autorange: true,
                   },
                   yaxis: {
-                    title: { text: 'Voltage [V]' },
+                    title: { text: yTitle },
                     autorange: true,
                   },
                   margin: { t: 50, b: 40, l: 60, r: 20 },
-                  width: 900,
-                  height: 300,
+                  height: 360,
                 }}
                 config={{ displayModeBar: false }}
+                style={{ width: '100%' }}
               />
-            )}
-          </div>
-        ))}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

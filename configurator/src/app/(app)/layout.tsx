@@ -12,7 +12,7 @@ export default async function AppLayout({
     return (
         <>
             <main className="flex h-full">
-                <Sidebar />
+                {await Sidebar()}
                 {children}
             </main>
             <Toaster richColors />

@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useFormState } from "react-dom";
-import { useFormStatus } from "react-dom";
+import { useState, useTransition } from "react";
 
 import { signInAction } from "@/lib/actions/users";
 
@@ -12,9 +11,16 @@ import { Button } from "@/components/ui/button";
 import AuthFormError from "@/components/auth/AuthFormError";
 
 export default function SignInPage() {
-  const [state, formAction] = useFormState(signInAction, {
-    error: "",
-  });
+  const [state, setState] = useState({ error: "" });
+  const [isPending, startTransition] = useTransition();
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(() => {
+      signInAction(state, formData).then(setState);
+    });
+  };
 
   return (
     <main className="max-w-lg mx-auto my-4 bg-popover p-10">
@@ -22,7 +28,7 @@ export default function SignInPage() {
         Sign in to your account
       </h1>
       <AuthFormError state={state} />
-      <form action={formAction}>
+      <form onSubmit={handleSubmit}>
         <Label htmlFor="email" className="text-muted-foreground">
           Email
         </Label>
@@ -33,7 +39,7 @@ export default function SignInPage() {
         </Label>
         <Input type="password" name="password" id="password" required />
         <br />
-        <SubmitButton />
+        <SubmitButton isPending={isPending} />
       </form>
       <div className="mt-4 text-sm text-center text-muted-foreground">
         Don&apos;t have an account yet?{" "}
@@ -48,11 +54,10 @@ export default function SignInPage() {
   );
 }
 
-const SubmitButton = () => {
-  const { pending } = useFormStatus();
+const SubmitButton = ({ isPending }: { isPending: boolean }) => {
   return (
-    <Button className="w-full" type="submit" disabled={pending}>
-      Sign{pending ? "ing" : ""} in
+    <Button className="w-full" type="submit" disabled={isPending}>
+      Sign{isPending ? "ing" : ""} in
     </Button>
   );
 };

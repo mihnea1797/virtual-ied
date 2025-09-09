@@ -39,6 +39,7 @@ async function main() {
         time:      t,
         phase:     phase,
         rms_value: noisy,
+        measurement: "V" 
       }
     })
 

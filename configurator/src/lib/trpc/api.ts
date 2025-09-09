@@ -14,19 +14,18 @@ import { callProcedure } from "@trpc/server";
 import { type TRPCErrorResponse } from "@trpc/server/rpc";
 import { observable } from "@trpc/server/observable";
 
-import { cache } from "react";
 import { cookies } from "next/headers";
 
 import SuperJSON from "superjson";
 
-const createContext = cache(() => {
+const createContext = () => {
   return createTRPCContext({
     headers: new Headers({
       cookie: cookies().toString(),
       "x-trpc-source": "rsc",
     }),
   });
-});
+};
 
 export const api = createTRPCProxyClient<typeof appRouter>({
   transformer: SuperJSON,
@@ -44,7 +43,7 @@ export const api = createTRPCProxyClient<typeof appRouter>({
       ({ op }) =>
         observable((observer) => {
           createContext()
-            .then((ctx) => {
+            .then((ctx: any) => {
               return callProcedure({
                 procedures: appRouter._def.procedures,
                 path: op.path,
@@ -53,7 +52,7 @@ export const api = createTRPCProxyClient<typeof appRouter>({
                 type: op.type,
               });
             })
-            .then((data) => {
+            .then((data: any) => {
               observer.next({ result: { data } });
               observer.complete();
             })

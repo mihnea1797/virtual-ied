@@ -40,6 +40,7 @@ export async function ingestRMS(batchSize = 4, intervalMs = 1): Promise<void> {
       app_id: 'unfiltered',
       phase: 1,
       rms_value: row.value,
+      measurement: 'voltage',
     }))
     await db.sampledValue.createMany({ data: batch })
     await sleep(intervalMs)
@@ -52,6 +53,7 @@ export async function ingestRMS(batchSize = 4, intervalMs = 1): Promise<void> {
       app_id: 'filtered',
       phase: 1,
       rms_value: row.value,
+      measurement: 'voltage',
     }))
     await db.sampledValue.createMany({ data: batch })
     await sleep(intervalMs)
