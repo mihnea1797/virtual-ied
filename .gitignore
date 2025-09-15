@@ -58,3 +58,9 @@ core
 output-sv.txt
 output-goose.txt
 RMS.txt
+
+
+
+.scannerwork/*
+report-task.txt
+.sonar_lock

@@ -108,3 +108,8 @@ set_target_properties(merging-unit PROPERTIES
     INSTALL_RPATH_USE_LINK_PATH TRUE
     INSTALL_RPATH "/usr/local/lib"
 )
+
+
+#Sonarscan
+# Always export compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

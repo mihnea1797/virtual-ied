@@ -1,0 +1,62 @@
+image:
+  name: eximprod/development-container:25.09.02-vIED
+  username: $DOCKER_HUB_USERNAME
+  password: $DOCKER_HUB_TOKEN
+
+# Give the whole build more memory
+options:
+  docker: true
+  size: 2x   # 8 GB RAM container
+
+definitions:
+  services:
+    docker:
+      memory: 6144   # keep this; analysis is memory hungry
+
+  caches:
+    sonar: ~/.sonar
+
+  steps:
+    - step: &build-and-scan
+        name: Build & Scan
+        caches:
+          - sonar
+        script:
+          - set -euo pipefail
+          # ==== Fetch Sonar build-wrapper + scanner (per Sonar template) ====
+          - export SONAR_SCANNER_VERSION=6.2.0.4584
+          - mkdir -p "$HOME/.sonar"
+          - echo "Downloading build-wrapper from ${SONAR_HOST_URL}..."
+          - curl -sSLo "$HOME/.sonar/build-wrapper-linux-x86.zip" "${SONAR_HOST_URL}/static/cpp/build-wrapper-linux-x86.zip"
+          - unzip -o "$HOME/.sonar/build-wrapper-linux-x86.zip" -d "$HOME/.sonar/"
+          - echo "Downloading sonar-scanner ${SONAR_SCANNER_VERSION}..."
+          - curl -sSLo "$HOME/.sonar/sonar-scanner.zip" "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip"
+          - unzip -o "$HOME/.sonar/sonar-scanner.zip" -d "$HOME/.sonar/"
+          - export PATH="$PATH:$HOME/.sonar/sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64/bin"
+          - export BUILD_WRAPPER="$HOME/.sonar/build-wrapper-linux-x86/build-wrapper-linux-x86-64"
+
+          # ==== Configure + Build under the wrapper ====
+          - rm -rf build bw-output
+          - mkdir build
+          - pushd build
+          - cmake ..
+          - |
+            "$BUILD_WRAPPER" --out-dir ../bw-output \
+            make -j"$(nproc)"
+          - popd
+          - ls -l bw-output || true
+
+          # ==== Run Sonar Scanner ====
+          - sonar-scanner 
+
+pipelines:
+  # default:
+  #   - step: *build-and-scan
+
+  branches:
+    master:
+      - step: *build-and-scan
+      
+  pull-requests:
+    '**':
+      - step: *build-and-scan
