@@ -14,24 +14,29 @@ if(DEFINED ENV{TOOLCHAIN})
     set(CMAKE_AR "$ENV{TOOLCHAIN}ar" CACHE FILEPATH "CW archiver" FORCE)
 endif()
 
-# Find the installed libiec61850 library
-find_path(LIBIEC61850_INCLUDE_DIR NAMES iec61850_server.h PATHS /usr/local/include/libiec61850)
-find_library(LIBIEC61850_LIBRARY NAMES iec61850 PATHS /usr/local/lib)
+# libiec61850 static library (vendored)
+set(LIBIEC61850_VENDOR_DIR ${PROJECT_SOURCE_DIR}/vendor/libiec61850)
 
-if(NOT LIBIEC61850_INCLUDE_DIR OR NOT LIBIEC61850_LIBRARY)
-    message(FATAL_ERROR "libiec61850 not found")
-else()
-    message(STATUS "libiec61850 include directory: ${LIBIEC61850_INCLUDE_DIR}")
-    message(STATUS "libiec61850 library: ${LIBIEC61850_LIBRARY}")
+if(NOT EXISTS "${LIBIEC61850_VENDOR_DIR}/lib/libiec61850.a")
+    message(FATAL_ERROR "Missing ${LIBIEC61850_VENDOR_DIR}/lib/libiec61850.a")
 endif()
 
-# Find the location oh hal_socket.h library
-find_path(LIBIEC61850_HAL_SOCKET NAMES hal_socket.h PATHS /root/libiec61850/hal/inc)
-if(NOT LIBIEC61850_HAL_SOCKET)
-    message(FATAL_ERROR "libiec61850 : hal_socket.h not found")
-else()
-    message(STATUS "libiec61850 : hal_socket.h include directory: ${LIBIEC61850_HAL_SOCKET}")
-endif()
+add_library(iec61850 STATIC IMPORTED GLOBAL)
+
+set(IEC61850_INCLUDES
+  "${LIBIEC61850_VENDOR_DIR}/include"
+  "${LIBIEC61850_VENDOR_DIR}/include/libiec61850"
+  "${LIBIEC61850_VENDOR_DIR}/include/hal/inc"
+)
+
+set_target_properties(iec61850 PROPERTIES
+    IMPORTED_LOCATION "${LIBIEC61850_VENDOR_DIR}/lib/libiec61850.a"
+    INTERFACE_INCLUDE_DIRECTORIES 
+    "${IEC61850_INCLUDES}"
+)
+
+set(LIBIEC61850_INCLUDE_DIR "${LIBIEC61850_VENDOR_DIR}/include")
+set(LIBIEC61850_HAL_SOCKET   "${LIBIEC61850_VENDOR_DIR}/include/hal/inc")
 
 # Find PostgreSQL C client (libpq)
 find_package(PostgreSQL REQUIRED)
@@ -78,10 +83,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /opt/virtual-merging-unit)
 
 # Add the executable
 add_executable(merging-unit ${SOURCES} ${HEADERS})
-
 # Share libraries
 set(SHARED_LIBRARIES
-    ${LIBIEC61850_LIBRARY}
+    iec61850
     rms-computation
     butterworth-filter
     frequency-tracking
@@ -89,11 +93,10 @@ set(SHARED_LIBRARIES
     ${PQXX_LIBRARY}
 )
 # Link the shared libraries
-target_link_libraries(merging-unit ${SHARED_LIBRARIES})
+target_link_libraries(merging-unit PRIVATE ${SHARED_LIBRARIES})
 
 # Include directories
 set(INCLUDE_DIRECTORIES
-    ${LIBIEC61850_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/merging-unit/rms-computation
     ${CMAKE_SOURCE_DIR}/merging-unit/butterworth-filter
     ${CMAKE_SOURCE_DIR}/merging-unit/frequency-tracking
