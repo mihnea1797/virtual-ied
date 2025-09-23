@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.10)
 
 # Create the butterworth-filter library
 add_library(butterworth-filter STATIC ButterworthFilter.cpp)

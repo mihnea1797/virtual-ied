@@ -36,6 +36,8 @@ definitions:
           - export BUILD_WRAPPER="$HOME/.sonar/build-wrapper-linux-x86/build-wrapper-linux-x86-64"
 
           # ==== Configure + Build under the wrapper ====
+          - git submodule sync --recursive
+          - git submodule update --init --recursive
           - rm -rf build bw-output
           - mkdir build
           - pushd build

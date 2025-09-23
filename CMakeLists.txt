@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.10)
 
 # Project name
 project(merging-unit)
@@ -14,29 +14,25 @@ if(DEFINED ENV{TOOLCHAIN})
     set(CMAKE_AR "$ENV{TOOLCHAIN}ar" CACHE FILEPATH "CW archiver" FORCE)
 endif()
 
-# libiec61850 static library (vendored)
-set(LIBIEC61850_VENDOR_DIR ${PROJECT_SOURCE_DIR}/vendor/libiec61850)
+# libiec61850
+set(LIBIEC61850_DIR ${PROJECT_SOURCE_DIR}/dependencies/libiec61850)
 
-if(NOT EXISTS "${LIBIEC61850_VENDOR_DIR}/lib/libiec61850.a")
-    message(FATAL_ERROR "Missing ${LIBIEC61850_VENDOR_DIR}/lib/libiec61850.a")
-endif()
+# Build static + PIC (great for containers/embedded)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_library(iec61850 STATIC IMPORTED GLOBAL)
+# Enable only the components you use
+set(WITH_MMS             OFF CACHE BOOL "" FORCE)
+set(WITH_GOOSE            ON CACHE BOOL "" FORCE)
+set(WITH_SAMPLED_VALUES   ON CACHE BOOL "" FORCE)
+set(WITH_EXAMPLES        OFF CACHE BOOL "" FORCE)
+set(WITH_TESTS           OFF CACHE BOOL "" FORCE)
+# Optional (if available in your version):
+set(BUILD_DOCUMENTATION  OFF CACHE BOOL "" FORCE)
+set(BUILD_TOOLS          OFF CACHE BOOL "" FORCE)
 
-set(IEC61850_INCLUDES
-  "${LIBIEC61850_VENDOR_DIR}/include"
-  "${LIBIEC61850_VENDOR_DIR}/include/libiec61850"
-  "${LIBIEC61850_VENDOR_DIR}/include/hal/inc"
-)
-
-set_target_properties(iec61850 PROPERTIES
-    IMPORTED_LOCATION "${LIBIEC61850_VENDOR_DIR}/lib/libiec61850.a"
-    INTERFACE_INCLUDE_DIRECTORIES 
-    "${IEC61850_INCLUDES}"
-)
-
-set(LIBIEC61850_INCLUDE_DIR "${LIBIEC61850_VENDOR_DIR}/include")
-set(LIBIEC61850_HAL_SOCKET   "${LIBIEC61850_VENDOR_DIR}/include/hal/inc")
+# Build the library
+add_subdirectory(${LIBIEC61850_DIR} EXCLUDE_FROM_ALL)  # defines target: iec61850
 
 # Find PostgreSQL C client (libpq)
 find_package(PostgreSQL REQUIRED)
@@ -53,8 +49,6 @@ endif()
 
 # Include directories
 set(INCLUDE_DIRECTORIES
-    ${LIBIEC61850_INCLUDE_DIR}
-    ${LIBIEC61850_HAL_SOCKET}
     ${PostgreSQL_INCLUDE_DIRS}
     ${PQXX_INCLUDE_DIR}
 )
@@ -83,8 +77,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY /opt/virtual-merging-unit)
 
 # Add the executable
 add_executable(merging-unit ${SOURCES} ${HEADERS})
-# Share libraries
-set(SHARED_LIBRARIES
+
+# Link the shared libraries
+target_link_libraries(merging-unit
+  PRIVATE
     iec61850
     rms-computation
     butterworth-filter
@@ -92,10 +88,26 @@ set(SHARED_LIBRARIES
     ${PostgreSQL_LIBRARIES}
     ${PQXX_LIBRARY}
 )
-# Link the shared libraries
-target_link_libraries(merging-unit PRIVATE ${SHARED_LIBRARIES})
 
-# Include directories
+
+# Get libiec61850 include directories from its build configuration
+set(LIBIEC61850_INCLUDE_DIRS
+    ${LIBIEC61850_DIR}/src/common/inc
+    ${LIBIEC61850_DIR}/src/goose
+    ${LIBIEC61850_DIR}/src/sampled_values
+    ${LIBIEC61850_DIR}/src/r_session
+    ${LIBIEC61850_DIR}/src/hal/inc
+    ${LIBIEC61850_DIR}/src/iec61850/inc
+    ${LIBIEC61850_DIR}/src/iec61850/inc_private
+    ${LIBIEC61850_DIR}/src/mms/inc
+    ${LIBIEC61850_DIR}/src/mms/inc_private
+    ${LIBIEC61850_DIR}/src/mms/iso_mms/asn1c
+    ${LIBIEC61850_DIR}/src/logging
+    ${LIBIEC61850_DIR}/hal/inc
+    ${CMAKE_BINARY_DIR}/dependencies/libiec61850/config
+)
+
+# Include directories for your own modules
 set(INCLUDE_DIRECTORIES
     ${CMAKE_SOURCE_DIR}/merging-unit/rms-computation
     ${CMAKE_SOURCE_DIR}/merging-unit/butterworth-filter
@@ -103,7 +115,10 @@ set(INCLUDE_DIRECTORIES
 )
 
 # Ensure the include directories are available to the merging-unit project
-target_include_directories(merging-unit PRIVATE ${INCLUDE_DIRECTORIES})
+target_include_directories(merging-unit PRIVATE 
+    ${INCLUDE_DIRECTORIES}
+    ${LIBIEC61850_INCLUDE_DIRS}
+)
 
 # Set the RPATH to find the shared libraries at runtime
 set_target_properties(merging-unit PROPERTIES
@@ -111,7 +126,6 @@ set_target_properties(merging-unit PROPERTIES
     INSTALL_RPATH_USE_LINK_PATH TRUE
     INSTALL_RPATH "/usr/local/lib"
 )
-
 
 #Sonarscan
 # Always export compile_commands.json
