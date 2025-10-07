@@ -17,6 +17,27 @@ endif()
 # libiec61850
 set(LIBIEC61850_DIR ${PROJECT_SOURCE_DIR}/dependencies/libiec61850)
 
+# Submodule synchronization and update during cmake config / reconfig 
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+    message(STATUS "Synchronizing and updating git submodules...")
+    execute_process(
+        COMMAND git submodule sync --recursive
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    execute_process(
+        COMMAND git submodule update --init --recursive
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    execute_process(
+        COMMAND git fetch --tags
+        WORKING_DIRECTORY ${LIBIEC61850_DIR}
+    )
+    execute_process(
+        COMMAND git checkout v1.6.1
+        WORKING_DIRECTORY ${LIBIEC61850_DIR}
+    )
+endif()
+
 # Build static + PIC (great for containers/embedded)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
