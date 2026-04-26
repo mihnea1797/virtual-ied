@@ -33,17 +33,31 @@ struct ListenerParameters
     std::function<void(bool)> *goosePublishMessageFunction;
 };
 
+struct RSessionKey
+{
+    int id;
+    std::string key;
+    std::string secAlgo;
+    std::string sigAlgo;
+};
+
 class SampledValuesSubscriberWrapper
 {
 private:
     SVReceiver _receiver;
     SVSubscriber _subscriber;
+    RSession _rSession = nullptr;
 
     std::string _interface;
     uint16_t _appId;
     bool _destAddrCheck;
     double _voltageThreshold;
     double _currentThreshold;
+
+    std::string _localAddress;
+    int _port;
+    std::vector<std::string> _multicastGroups;
+    std::vector<RSessionKey> _keys;
 
     bool listenerSet = false;
     ListenerParameters _listenerParams;

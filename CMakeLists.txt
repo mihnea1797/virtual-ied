@@ -33,7 +33,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
         WORKING_DIRECTORY ${LIBIEC61850_DIR}
     )
     execute_process(
-        COMMAND git checkout v1.6.1
+        COMMAND git checkout origin/v1.6_develop
         WORKING_DIRECTORY ${LIBIEC61850_DIR}
     )
 endif()
@@ -46,6 +46,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(WITH_MMS             OFF CACHE BOOL "" FORCE)
 set(WITH_GOOSE            ON CACHE BOOL "" FORCE)
 set(WITH_SAMPLED_VALUES   ON CACHE BOOL "" FORCE)
+set(CONFIG_IEC61850_R_SMV ON CACHE BOOL "" FORCE)
+set(CONFIG_USE_EXTERNAL_MBEDTLS_DYNLIB ON CACHE BOOL "" FORCE)
+set(CONFIG_EXTERNAL_MBEDTLS_INCLUDE_PATH "/usr/include" CACHE STRING "" FORCE)
 set(WITH_EXAMPLES        OFF CACHE BOOL "" FORCE)
 set(WITH_TESTS           OFF CACHE BOOL "" FORCE)
 # Optional (if available in your version):

@@ -1,0 +1,65 @@
+{
+  "gooseSettings": {
+    "vlanPriority": 4,
+    "vlanId": 0,
+    "appId": 1,
+    "dstAddress": "01:0c:cd:01:00:00",
+    "ethernetInterface": "eth0",
+    "useVlanTag": false,
+    "goId": "AA1J4Q15A1LD0/LLN0.RPG",
+    "goCb": "AA1J4Q15A1LD0/LLN0$GO$RPG",
+    "timeAllowedToLive": 20000,
+    "dataSetRef": "AA1J4Q15A1LD0/LLN0$Gss",
+    "simulation": false,
+    "confRev": 200,
+    "ndsCom": false
+  },
+  "sampledValuesSettings": [
+    {
+        "muId": "MU2",
+        "appId": 16384,
+        "threshold": 230,
+        "dataFormat": {
+            "measurementOrder": "voltageFirst",
+            "clusteringType": "single",
+            "numberOfPhases": 4
+        },
+        "signalProperties":{
+            "samplesPerPeriod": 80,
+            "scalingConstant": 10000
+        },
+        "filterProperties":{
+            "order": 0,
+            "cutoffFrequency": 200,
+            "samplingFrequency": 4000
+        },
+        "ethernetInterface": "eth0",
+        "dstAddressCheck": false,
+        "rSessionSettings": {
+            "localAddress": "0.0.0.0",
+            "port": 102,
+            "multicastGroups": [],
+            "keys": [
+                {
+                    "id": 1,
+                    "key": "0123456789ABCDEF",
+                    "secAlgo": "AES_128_GCM",
+                    "sigAlgo": "NONE"
+                },
+                {
+                    "id": 2,
+                    "key": "FEDCBA9876543210",
+                    "secAlgo": "AES_128_GCM",
+                    "sigAlgo": "NONE"
+                }
+            ]
+        }
+    }
+  ],
+  "postgresSql": {
+    "dbname": "merging_unit",
+    "user": "postgres",
+    "password": "postgres",
+    "hostaddr": "127.0.0.1"
+  }
+}

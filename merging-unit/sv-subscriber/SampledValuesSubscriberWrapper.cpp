@@ -19,7 +19,43 @@ SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::j
 {
     ParseSettings(sampleValuesSettings);
 
-    _receiver = SVReceiver_create();
+    if (!_localAddress.empty())
+    {
+        _rSession = RSession_create();
+        if (_rSession)
+        {
+            RSession_setLocalAddress(_rSession, const_cast<char *>(_localAddress.c_str()), _port);
+            for (const auto &group : _multicastGroups)
+            {
+                RSession_addMulticastGroup(_rSession, const_cast<char *>(group.c_str()));
+            }
+            for (const auto &key : _keys)
+            {
+                RSecurityAlgorithm secAlgo = R_SESSION_SEC_ALGO_AES_128_GCM;
+                if (key.secAlgo == "AES_128_GCM")
+                    secAlgo = R_SESSION_SEC_ALGO_AES_128_GCM;
+                // Add other if needed
+
+                RSignatureAlgorithm sigAlgo = R_SESSION_SIG_ALGO_NONE;
+                if (key.sigAlgo == "NONE")
+                    sigAlgo = R_SESSION_SIG_ALGO_NONE;
+                // Add other if needed
+
+                RSession_addKey(_rSession, key.id, (uint8_t*)key.key.c_str(), key.key.length(), secAlgo, sigAlgo);
+            }
+            _receiver = SVReceiver_createRemote(_rSession);
+        }
+        else
+        {
+            printf("Failed to create RSession\n");
+            _receiver = SVReceiver_create();
+        }
+    }
+    else
+    {
+        _receiver = SVReceiver_create();
+    }
+
     SVReceiver_setInterfaceId(_receiver, const_cast<char *>(_interface.c_str()));
 
     _subscriber = SVSubscriber_create(NULL, _appId);
@@ -40,6 +76,10 @@ SampledValuesSubscriberWrapper::~SampledValuesSubscriberWrapper()
 {
     SVReceiver_stop(_receiver);
     SVReceiver_destroy(_receiver);
+    if (_rSession)
+    {
+        RSession_destroy(_rSession);
+    }
 }
 
 void SampledValuesSubscriberWrapper::SetListener(std::function<void(bool)> goosePublishMessageFunction)
@@ -403,8 +443,25 @@ void SampledValuesSubscriberWrapper::ParseSettings(const nlohmann::json &sampleV
     _interface = sampleValuesSettings.at("ethernetInterface").get<std::string>();
     _appId = sampleValuesSettings.at("appId").get<uint16_t>();
     _destAddrCheck = sampleValuesSettings.at("dstAddressCheck").get<bool>();
-    _voltageThreshold = sampleValuesSettings.at("voltageThreshold").get<double>();
-    _currentThreshold = sampleValuesSettings.at("currentThreshold").get<double>();
+    _voltageThreshold = sampleValuesSettings.at("threshold").get<double>();
+    _currentThreshold = sampleValuesSettings.at("threshold").get<double>();
+
+    if (sampleValuesSettings.contains("rSessionSettings"))
+    {
+        const auto &rSession = sampleValuesSettings.at("rSessionSettings");
+        _localAddress = rSession.at("localAddress").get<std::string>();
+        _port = rSession.at("port").get<int>();
+        _multicastGroups = rSession.at("multicastGroups").get<std::vector<std::string>>();
+        for (const auto &keyJson : rSession.at("keys"))
+        {
+            RSessionKey key;
+            key.id = keyJson.at("id").get<int>();
+            key.key = keyJson.at("key").get<std::string>();
+            key.secAlgo = keyJson.at("secAlgo").get<std::string>();
+            key.sigAlgo = keyJson.at("sigAlgo").get<std::string>();
+            _keys.push_back(key);
+        }
+    }
 }
 
 uint8_t SampledValuesSubscriberWrapper::getNumberOfPhases()

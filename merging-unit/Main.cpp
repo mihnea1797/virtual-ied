@@ -9,7 +9,7 @@
 
 int main()
 {
-    std::ifstream file("/opt/virtual-merging-unit/config.json");
+    std::ifstream file("/root/virtual-merging-unit/config.json");
     if (!file)
     {
         std::cerr << "Unable to open config file." << std::endl;
@@ -20,34 +20,38 @@ int main()
     file >> config;
 
     nlohmann::json gooseSettings = config["gooseSettings"];
-    nlohmann::json sampledValuesSettings = config["sampledValuesSettings"];
-    nlohmann::json voltageSignalProperties = config["voltageSignalProperties"];
-    nlohmann::json currentSignalProperties = config["currentSignalProperties"];
-    nlohmann::json voltageFilterProperties = config["voltageFilterProperties"];
-    nlohmann::json currentFilterProperties = config["currentFilterProperties"];
-    nlohmann::json dataFormat = config["dataFormat"];
+    nlohmann::json sampledValuesSettingsArray = config["sampledValuesSettings"];
+    if (!sampledValuesSettingsArray.is_array() || sampledValuesSettingsArray.empty())
+    {
+        std::cerr << "sampledValuesSettings must be a non-empty array in config.json." << std::endl;
+        return 1;
+    }
+
+    nlohmann::json sampledValuesSettings = sampledValuesSettingsArray[0];
+    nlohmann::json signalProperties = sampledValuesSettings["signalProperties"];
+    nlohmann::json filterProperties = sampledValuesSettings["filterProperties"];
+    nlohmann::json dataFormat = sampledValuesSettings["dataFormat"];
     nlohmann::json postgresSqlProperties = config["postgresSql"];
 
     SampledValuesSubscriberWrapper::setDataFormat(dataFormat);
 
     std::unique_ptr<GoosePublisherWrapper> goosePublisher = std::make_unique<GoosePublisherWrapper>(gooseSettings);
-    std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings); 
-    SampledValuesSubscriberWrapper::setDataFormat(dataFormat);
+    std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings);
     SampledValuesSubscriberWrapper::setPostgresConnection(postgresSqlProperties);
     
     for(uint32_t index = 0; index < SampledValuesSubscriberWrapper::getNumberOfPhases(); index++)
     {
         if(SampledValuesSubscriberWrapper::getDataFormat() != DataFormat::onlyI)
         {
-            SampledValuesSubscriberWrapper::setVoltageRmsObject(voltageSignalProperties);
-            SampledValuesSubscriberWrapper::setVoltageButterFilter(voltageFilterProperties);
+            SampledValuesSubscriberWrapper::setVoltageRmsObject(signalProperties);
+            SampledValuesSubscriberWrapper::setVoltageButterFilter(filterProperties);
             SampledValuesSubscriberWrapper::setVoltageFrequencyTracker();
         }
         
         if(SampledValuesSubscriberWrapper::getDataFormat() != DataFormat::onlyV)
         {
-            SampledValuesSubscriberWrapper::setCurrentRmsObject(currentSignalProperties);
-            SampledValuesSubscriberWrapper::setCurrentButterFilter(currentFilterProperties);
+            SampledValuesSubscriberWrapper::setCurrentRmsObject(signalProperties);
+            SampledValuesSubscriberWrapper::setCurrentButterFilter(filterProperties);
             SampledValuesSubscriberWrapper::setCurrentFrequencyTracker();
         }
     }
