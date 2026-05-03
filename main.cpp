@@ -8,12 +8,12 @@
 #include <thread>
 #include <vector>
 
-#include <pcap.h>
 #include <nlohmann/json.hpp>
 #include "third_party/httplib.h"      // third_party/httplib.h (cpp-httplib single header)
-#include "dependencies/libiec61850/src/sampled_values/sv_subscriber.h" // from libiec61850
 #include "dependencies/libiec61850/src/sampled_values/sv_publisher.h" // from libiec61850
-#include "dependencies/libiec61850/src/r_session/r_session.h" // for R-SV
+#include "dependencies/libiec61850/src/goose/goose_receiver.h"        // R-GOOSE receiver
+#include "dependencies/libiec61850/src/goose/goose_subscriber.h"      // R-GOOSE subscriber
+#include "dependencies/libiec61850/src/r_session/r_session.h"         // R-Session
 
 using json = nlohmann::json;
 using Clock = std::chrono::steady_clock;
@@ -72,133 +72,140 @@ struct State
   }
 } g;
 
-// ---------------- GOOSE sniffer thread ----------------
-void goose_sniffer(const std::string &iface)
+// ---------------- R-GOOSE callback (called by GooseReceiver's thread) ----------------
+static void rgoose_listener_cb(GooseSubscriber /*subscriber*/, void * /*parameter*/)
 {
-  char errbuf[PCAP_ERRBUF_SIZE]{0};
-  pcap_t *h = pcap_open_live(iface.c_str(), 65535, 1, 1, errbuf);
-  if (!h)
+  // Compute latencies once, on first received R-GOOSE
+  if (!g.gooseSeen.load() && (g.stepOccurred.load() || g.thresholdCrossed.load()))
   {
-    std::cerr << "pcap_open_live failed: " << errbuf << "\n";
-    return;
-  }
+    g.tGoose = Clock::now();
 
-  bpf_program fp{};
-  if (pcap_compile(h, &fp, "ether proto 0x88b8", 1, PCAP_NETMASK_UNKNOWN) == -1)
-  {
-    std::cerr << "pcap_compile failed: " << pcap_geterr(h) << "\n";
-    pcap_close(h);
-    return;
-  }
-  if (pcap_setfilter(h, &fp) == -1)
-  {
-    std::cerr << "pcap_setfilter failed: " << pcap_geterr(h) << "\n";
-    pcap_freecode(&fp);
-    pcap_close(h);
-    return;
-  }
-  pcap_freecode(&fp);
-
-  while (g.running.load())
-  {
-    pcap_pkthdr *hdr;
-    const u_char *data;
-    int r = pcap_next_ex(h, &hdr, &data);
-    if (r <= 0)
-      continue;
-
-    // Compute latencies once, on first received GOOSE
-    if (!g.gooseSeen.load() && (g.stepOccurred.load() || g.thresholdCrossed.load()))
+    if (g.stepOccurred.load())
     {
-      g.tGoose = Clock::now();
-
-      if (g.stepOccurred.load())
-      {
-        double msStep = std::chrono::duration<double, std::milli>(g.tGoose - g.tStep).count();
-        g.latencyFromStepMs.store(msStep);
-        std::cout << "[GOOSE] latency step -> GOOSE = " << msStep << " ms\n";
-      }
-
-      if (g.thresholdCrossed.load())
-      {
-        double msThresh = std::chrono::duration<double, std::milli>(g.tGoose - g.tThreshold).count();
-        g.latencyFromThresholdMs.store(msThresh);
-        std::cout << "[GOOSE] latency threshold -> GOOSE = " << msThresh << " ms\n";
-      }
-
-      g.gooseSeen.store(true);
-      // keep running; user might stop manually
+      double msStep = std::chrono::duration<double, std::milli>(g.tGoose - g.tStep).count();
+      g.latencyFromStepMs.store(msStep);
+      std::cout << "[R-GOOSE] latency step -> R-GOOSE = " << msStep << " ms\n";
     }
-  }
 
-  pcap_close(h);
+    if (g.thresholdCrossed.load())
+    {
+      double msThresh = std::chrono::duration<double, std::milli>(g.tGoose - g.tThreshold).count();
+      g.latencyFromThresholdMs.store(msThresh);
+      std::cout << "[R-GOOSE] latency threshold -> R-GOOSE = " << msThresh << " ms\n";
+    }
+
+    g.gooseSeen.store(true);
+  }
 }
 
-// ---------------- SV publisher thread ----------------
+// ---------------- R-GOOSE sniffer thread ----------------
+void goose_sniffer(Config cfg)
+{
+  RSession rxSession = RSession_create();
+  if (!rxSession)
+  {
+    std::cerr << "RSession_create failed for R-GOOSE receiver\n";
+    return;
+  }
+
+  // Listen on all interfaces at the same port the remote GOOSE publisher targets
+  RSession_setLocalAddress(rxSession, "0.0.0.0", cfg.remotePort);
+  RSession_setRemoteAddress(rxSession, cfg.remoteIP.c_str(), cfg.remotePort);
+
+  // Keys must match those used by the R-GOOSE publisher
+  const char *key1 = "0123456789ABCDEF";
+  const char *key2 = "FEDCBA9876543210";
+  RSession_addKey(rxSession, 1, (uint8_t *)key1, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
+  RSession_addKey(rxSession, 2, (uint8_t *)key2, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
+
+  GooseReceiver receiver = GooseReceiver_createRemote(rxSession);
+  if (!receiver)
+  {
+    std::cerr << "GooseReceiver_createRemote failed\n";
+    RSession_destroy(rxSession);
+    return;
+  }
+
+  // Observer mode: match any R-GOOSE message regardless of goCbRef
+  GooseSubscriber subscriber = GooseSubscriber_create("", nullptr);
+  GooseSubscriber_setObserver(subscriber);
+  GooseSubscriber_setListener(subscriber, rgoose_listener_cb, nullptr);
+  GooseReceiver_addSubscriber(receiver, subscriber);
+
+  // GooseReceiver_start calls RSession_start internally; do NOT call it here
+  GooseReceiver_start(receiver);
+
+  if (!GooseReceiver_isRunning(receiver))
+  {
+    std::cerr << "R-GOOSE receiver failed to start\n";
+    GooseReceiver_destroy(receiver); // also destroys subscriber
+    RSession_stop(rxSession);
+    RSession_destroy(rxSession);
+    return;
+  }
+
+  while (g.running.load())
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  GooseReceiver_stop(receiver);
+  GooseReceiver_destroy(receiver); // also destroys subscriber
+  RSession_stop(rxSession);
+  RSession_destroy(rxSession);
+}
+
+// ---------------- R-SV publisher thread ----------------
 void sv_publisher_run(Config cfg)
 {
-  // Create local publisher
-  SVPublisher pub = SVPublisher_create(nullptr, cfg.iface.c_str());
-  if (!pub)
+  RSession rSession = RSession_create();
+  if (!rSession)
   {
-    std::cerr << "SVPublisher_create failed on " << cfg.iface << "\n";
+    std::cerr << "RSession_create failed\n";
     g.running.store(false);
     return;
   }
 
-  // One ASDU, 8x (FLOAT + Quality)
-  SVPublisher_ASDU asdu = SVPublisher_addASDU(pub, "sv1", "dataset1", 1);
-  if (!asdu)
+  RSession_setLocalAddress(rSession, "10.10.40.2", -1);
+  RSession_setRemoteAddress(rSession, cfg.remoteIP.c_str(), cfg.remotePort);
+
+  const char *key1 = "0123456789ABCDEF";
+  const char *key2 = "FEDCBA9876543210";
+  RSession_addKey(rSession, 1, (uint8_t *)key1, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
+  RSession_addKey(rSession, 2, (uint8_t *)key2, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
+
+  uint32_t activeKeyId = 1;
+  RSession_setActiveKey(rSession, activeKeyId);
+
+  SVPublisher rPub = SVPublisher_createRemote(rSession, 0x4000);
+  if (!rPub)
+  {
+    std::cerr << "SVPublisher_createRemote failed\n";
+    RSession_destroy(rSession);
+    g.running.store(false);
+    return;
+  }
+
+  SVPublisher_ASDU rAsdu = SVPublisher_addASDU(rPub, "sv1", "dataset1", 1);
+  if (!rAsdu)
   {
     std::cerr << "SVPublisher_addASDU failed\n";
-    SVPublisher_destroy(pub);
+    SVPublisher_destroy(rPub);
+    RSession_destroy(rSession);
     g.running.store(false);
     return;
   }
 
-  for (int i = 0; i < 8; ++i)
+  int floatIdx[4], qualIdx[4];
+  for (int i = 0; i < 4; ++i)
   {
-    SVPublisher_ASDU_addFLOAT(asdu);
-    SVPublisher_ASDU_addQuality(asdu);
+    floatIdx[i] = SVPublisher_ASDU_addFLOAT(rAsdu);
+    qualIdx[i]  = SVPublisher_ASDU_addQuality(rAsdu);
   }
+  int rTsIdx = SVPublisher_ASDU_addTimestamp(rAsdu);
 
-  SVPublisher_setupComplete(pub);
+  SVPublisher_setupComplete(rPub);
+  RSession_start(rSession);
 
-  // Create R-SV publisher
-  RSession rSession = RSession_create();
-  SVPublisher rPub = nullptr;
-  SVPublisher_ASDU rAsdu = nullptr;
-  uint32_t activeKeyId = 1;
-  uint64_t nextKeyChangeTime = 0; // will set later
-  if (rSession)
-  {
-    RSession_setLocalAddress(rSession, "10.10.40.2", -1);
-    RSession_setRemoteAddress(rSession, cfg.remoteIP.c_str(), cfg.remotePort);
-
-    nextKeyChangeTime = Hal_getTimeInMs() + 5000;
-    char* key1 = "0123456789ABCDEF";
-    char* key2 = "FEDCBA9876543210";
-    RSession_addKey(rSession, 1, (uint8_t*)key1, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
-    RSession_addKey(rSession, 2, (uint8_t*)key2, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
-    RSession_setActiveKey(rSession, activeKeyId);
-
-    rPub = SVPublisher_createRemote(rSession, 0x4000);
-    if (rPub)
-    {
-      rAsdu = SVPublisher_addASDU(rPub, "sv1", "dataset1", 1);
-      if (rAsdu)
-      {
-        for (int i = 0; i < 8; ++i)
-        {
-          SVPublisher_ASDU_addFLOAT(rAsdu);
-          SVPublisher_ASDU_addQuality(rAsdu);
-        }
-        int rTs = SVPublisher_ASDU_addTimestamp(rAsdu);
-        SVPublisher_setupComplete(rPub);
-        RSession_start(rSession);
-      }
-    }
-  }
+  uint64_t nextKeyChangeTime = Hal_getTimeInMs() + 5000;
 
   const double Ts = 1.0 / static_cast<double>(cfg.sampleRate);
   const double w = 2.0 * M_PI * cfg.freq;
@@ -211,8 +218,6 @@ void sv_publisher_run(Config cfg)
   g.gooseSeen.store(false);
   g.latencyFromStepMs.store(-1.0);
   g.latencyFromThresholdMs.store(-1.0);
-
-  int32_t smpCnt = 0; // for local, though not used, but to match
 
   size_t n = 0;
 
@@ -229,65 +234,51 @@ void sv_publisher_run(Config cfg)
     if (stepped && !g.stepOccurred.exchange(true))
     {
       g.tStep = Clock::now();
-      std::cout << "[SV] Step occurred (elapsed " << elapsed << " s)\n";
+      std::cout << "[R-SV] Step occurred (elapsed " << elapsed << " s)\n";
     }
 
     const double val = amp * std::sin(w * t);
-    const float fval = static_cast<float>(val);
 
     // threshold detection (first crossing only)
     if (g.thresholdArmed.load() && !g.thresholdCrossed.load() && val > cfg.threshold)
     {
       g.thresholdCrossed.store(true);
       g.tThreshold = Clock::now();
-      std::cout << "[SV] Threshold crossed: Ua=" << val << " (elapsed " << elapsed << " s)\n";
+      std::cout << "[R-SV] Threshold crossed: Ua=" << val << " (elapsed " << elapsed << " s)\n";
     }
 
     Quality q = 0;
     Quality_setValidity(&q, QUALITY_VALIDITY_GOOD);
 
-    // Publish local SV
-    for (int ch = 0; ch < 8; ++ch)
+    const float fval = static_cast<float>(val);
+    for (int ch = 0; ch < 4; ++ch)
     {
-      SVPublisher_ASDU_setFLOAT(asdu, ch * 2, fval);
-      SVPublisher_ASDU_setQuality(asdu, ch * 2 + 1, q);
+      SVPublisher_ASDU_setFLOAT(rAsdu, floatIdx[ch], fval);
+      SVPublisher_ASDU_setQuality(rAsdu, qualIdx[ch], q);
     }
-    SVPublisher_ASDU_increaseSmpCnt(asdu);
-    SVPublisher_publish(pub);
 
-    // Publish R-SV
-    if (rPub && rAsdu)
+    Timestamp rTs_val;
+    Timestamp_clearFlags(&rTs_val);
+    Timestamp_setTimeInMilliseconds(&rTs_val, Hal_getTimeInMs());
+    SVPublisher_ASDU_setTimestamp(rAsdu, rTsIdx, rTs_val);
+
+    SVPublisher_ASDU_increaseSmpCnt(rAsdu);
+    SVPublisher_publish(rPub);
+
+    if (Hal_getTimeInMs() >= nextKeyChangeTime)
     {
-      for (int ch = 0; ch < 8; ++ch)
-      {
-        SVPublisher_ASDU_setFLOAT(rAsdu, ch * 2, fval);
-        SVPublisher_ASDU_setQuality(rAsdu, ch * 2 + 1, q);
-      }
-      Timestamp rTs_val;
-      Timestamp_clearFlags(&rTs_val);
-      Timestamp_setTimeInMilliseconds(&rTs_val, Hal_getTimeInMs());
-      SVPublisher_ASDU_setTimestamp(rAsdu, 16, rTs_val);
-      SVPublisher_ASDU_increaseSmpCnt(rAsdu);
-      SVPublisher_publish(rPub);
-
-      if (Hal_getTimeInMs() >= nextKeyChangeTime)
-      {
-        if (activeKeyId == 1)
-          activeKeyId = 2;
-        else
-          activeKeyId = 1;
-        RSession_setActiveKey(rSession, activeKeyId);
-        nextKeyChangeTime = Hal_getTimeInMs() + 5000;
-      }
+      activeKeyId = (activeKeyId == 1) ? 2 : 1;
+      RSession_setActiveKey(rSession, activeKeyId);
+      nextKeyChangeTime = Hal_getTimeInMs() + 5000;
     }
 
     ++n;
     std::this_thread::sleep_until(appStart + std::chrono::duration<double>(n * Ts));
   }
 
-  SVPublisher_destroy(pub);
-  if (rPub) SVPublisher_destroy(rPub);
-  if (rSession) RSession_destroy(rSession);
+  SVPublisher_destroy(rPub);
+  RSession_stop(rSession);
+  RSession_destroy(rSession);
 }
 
 // ---------------- HTTP server (UI + control) ----------------
@@ -469,7 +460,7 @@ int main(int argc, char **argv)
     { std::lock_guard<std::mutex> lk(g.m); cfgSnapshot = g.cfg; }
 
     std::thread(sv_publisher_run, cfgSnapshot).detach();
-    std::thread(goose_sniffer, cfgSnapshot.iface).detach();
+    std::thread(goose_sniffer, cfgSnapshot).detach();
 
     res.set_content("{}", "application/json"); });
 
