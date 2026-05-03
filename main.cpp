@@ -10,14 +10,14 @@
 
 #include <nlohmann/json.hpp>
 #include "third_party/httplib.h"
-#include "index_html.h"      // third_party/httplib.h (cpp-httplib single header)
+#include "index_html.h"
+#include "logger.h"
 #include "dependencies/libiec61850/src/sampled_values/sv_publisher.h" // from libiec61850
 #include "dependencies/libiec61850/src/goose/goose_receiver.h"        // R-GOOSE receiver
 #include "dependencies/libiec61850/src/goose/goose_subscriber.h"      // R-GOOSE subscriber
 #include "dependencies/libiec61850/src/r_session/r_session.h"         // R-Session
 
 using json = nlohmann::json;
-using Clock = std::chrono::steady_clock;
 
 struct Config
 {
@@ -37,6 +37,8 @@ struct State
   std::mutex m;
   Config cfg;
   std::atomic<bool> running{false};
+  Logger logger;
+  Clock::time_point tStart{};
 
   // --- Step tracking ---
   std::atomic<bool> stepOccurred{false}; // set true when elapsed >= stepTime (first time only)
@@ -95,6 +97,7 @@ static void rgoose_listener_cb(GooseSubscriber /*subscriber*/, void * /*paramete
       std::cout << "[R-GOOSE] latency threshold -> R-GOOSE = " << msThresh << " ms\n";
     }
 
+    g.logger.log("goose");
     g.gooseSeen.store(true);
   }
 }
@@ -235,6 +238,7 @@ void sv_publisher_run(Config cfg)
     if (stepped && !g.stepOccurred.exchange(true))
     {
       g.tStep = Clock::now();
+      g.logger.log("step");
       std::cout << "[R-SV] Step occurred (elapsed " << elapsed << " s)\n";
     }
 
@@ -245,6 +249,7 @@ void sv_publisher_run(Config cfg)
     {
       g.thresholdCrossed.store(true);
       g.tThreshold = Clock::now();
+      g.logger.log("threshold");
       std::cout << "[R-SV] Threshold crossed: Ua=" << val << " (elapsed " << elapsed << " s)\n";
     }
 
@@ -270,6 +275,7 @@ void sv_publisher_run(Config cfg)
     {
       activeKeyId = (activeKeyId == 1) ? 2 : 1;
       RSession_setActiveKey(rSession, activeKeyId);
+      g.logger.log("key_change");
       nextKeyChangeTime = Hal_getTimeInMs() + 5000;
     }
 
@@ -319,6 +325,10 @@ int main(int argc, char **argv)
     Config cfgSnapshot;
     { std::lock_guard<std::mutex> lk(g.m); cfgSnapshot = g.cfg; }
 
+    g.tStart = Clock::now();
+    g.logger.open(g.tStart);
+    g.logger.log("start");
+
     std::thread(sv_publisher_run, cfgSnapshot).detach();
     std::thread(goose_sniffer, cfgSnapshot).detach();
 
@@ -327,7 +337,9 @@ int main(int argc, char **argv)
   // Stop
   svr.Post("/stop", [](const httplib::Request &, httplib::Response &res)
            {
+    g.logger.log("stop");
     g.running.store(false);
+    g.logger.close();
     res.set_content("{}", "application/json"); });
 
   // SSE events: status + both live timers + both latencies

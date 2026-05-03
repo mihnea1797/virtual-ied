@@ -40,7 +40,7 @@ include_directories(
 
 link_directories(${PCAP_LIBRARY_DIRS})
 
-add_executable(sv_goose_latency_web main.cpp)
+add_executable(sv_goose_latency_web main.cpp logger.cpp)
 target_link_libraries(sv_goose_latency_web
   iec61850
   ${PCAP_LIBRARIES}
