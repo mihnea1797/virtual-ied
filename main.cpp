@@ -229,7 +229,7 @@ void sv_publisher_run(Config cfg)
     // step amplitude after stepTime seconds (wall-clock)
     const double elapsed = std::chrono::duration<double>(Clock::now() - appStart).count();
     const bool stepped = (elapsed >= cfg.stepTime);
-    const double amp = stepped ? cfg.amp2 : cfg.amp1;
+    const double amp = (stepped ? cfg.amp2 : cfg.amp1) * M_SQRT2;
 
     // Start STEP timer (first time only)
     if (stepped && !g.stepOccurred.exchange(true))
@@ -241,7 +241,7 @@ void sv_publisher_run(Config cfg)
     const double val = amp * std::sin(w * t);
 
     // threshold detection (first crossing only)
-    if (g.thresholdArmed.load() && !g.thresholdCrossed.load() && val > cfg.threshold)
+    if (g.thresholdArmed.load() && !g.thresholdCrossed.load() && val > cfg.threshold * M_SQRT2)
     {
       g.thresholdCrossed.store(true);
       g.tThreshold = Clock::now();

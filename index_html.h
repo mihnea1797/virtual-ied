@@ -29,10 +29,10 @@ inline constexpr const char* INDEX_HTML = R"HTML(<!doctype html>
       <legend>Signal</legend>
       <label>Interface</label><input id="iface" value="eth0">
       <label>Frequency (Hz)</label><input id="freq" type="number" value="50">
-      <label>Amplitude 1 (V)</label><input id="amp1" type="number" value="70">
-      <label>Amplitude 2 (V)</label><input id="amp2" type="number" value="100">
+      <label>Amplitude 1 (Vrms)</label><input id="amp1" type="number" value="70">
+      <label>Amplitude 2 (Vrms)</label><input id="amp2" type="number" value="100">
       <label>Step time (s)</label><input id="stepTime" type="number" value="10">
-      <label>Threshold (V)</label><input id="threshold" type="number" value="90">
+      <label>Threshold (Vrms)</label><input id="threshold" type="number" value="90">
       <label>Sample rate (sps)</label><input id="srate" type="number" value="4000">
       <label>Remote IP</label><input id="remoteIP" value="230.0.10.10">
       <label>Remote Port</label><input id="remotePort" type="number" value="102">
