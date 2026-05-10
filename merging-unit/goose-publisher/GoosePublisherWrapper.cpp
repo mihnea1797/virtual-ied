@@ -5,48 +5,60 @@ GoosePublisherWrapper::GoosePublisherWrapper(const nlohmann::json &settings)
 {
     ParseSettings(settings);
 
-    // Initialize the publisher
-    _publisher = GoosePublisher_create(&_commParameters, _interface.c_str());
-    if (_publisher != NULL)
+    _rSession = RSession_create();
+    if (_rSession)
     {
-        GoosePublisher_setGoCbRef(_publisher, const_cast<char *>(_goCbRef.c_str()));
-        GoosePublisher_setGoID(_publisher, const_cast<char *>(_goId.c_str()));
-        GoosePublisher_setDataSetRef(_publisher, const_cast<char *>(_dataSetRef.c_str()));
-        GoosePublisher_setConfRev(_publisher, _confRev);
-        GoosePublisher_setTimeAllowedToLive(_publisher, _timeAllowedToLive);
+        RSession_setRemoteAddress(_rSession, _remoteAddress.c_str(), _remotePort);
+
+        if (!_localAddress.empty())
+        {
+            RSession_setLocalAddress(_rSession, _localAddress.c_str(), _localPort);
+        }
+
+        for (const auto &key : _keys)
+        {
+            RSecurityAlgorithm secAlgo = R_SESSION_SEC_ALGO_AES_128_GCM;
+            if (key.secAlgo == "AES_256_GCM")
+                secAlgo = R_SESSION_SEC_ALGO_AES_256_GCM;
+            else if (key.secAlgo == "NONE")
+                secAlgo = R_SESSION_SEC_ALGO_NONE;
+
+            RSignatureAlgorithm sigAlgo = R_SESSION_SIG_ALGO_NONE;
+            if (key.sigAlgo == "HMAC_SHA256_80")
+                sigAlgo = R_SESSION_SIG_ALGO_HMAC_SHA256_80;
+
+            RSession_addKey(_rSession, key.id, (uint8_t *)key.key.c_str(), key.key.length(), secAlgo, sigAlgo);
+        }
+
+        if (_activeKeyId > 0)
+        {
+            RSession_setActiveKey(_rSession, _activeKeyId);
+        }
+
+        _publisher = GoosePublisher_createRemote(_rSession, _appId);
+        if (_publisher != NULL)
+        {
+            GoosePublisher_setGoCbRef(_publisher, const_cast<char *>(_goCbRef.c_str()));
+            GoosePublisher_setGoID(_publisher, const_cast<char *>(_goId.c_str()));
+            GoosePublisher_setDataSetRef(_publisher, const_cast<char *>(_dataSetRef.c_str()));
+            GoosePublisher_setConfRev(_publisher, _confRev);
+            GoosePublisher_setTimeAllowedToLive(_publisher, _timeAllowedToLive);
+        }
+    }
+    else
+    {
+        printf("Failed to create RSession for rGOOSE publisher\n");
+        _publisher = NULL;
     }
 }
 
 GoosePublisherWrapper::~GoosePublisherWrapper()
 {
     GoosePublisher_destroy(_publisher);
-}
-
-bool GoosePublisherWrapper::ParseMacAddress(const std::string &macStr, uint8_t macAddress[6])
-{
-    if (macStr.size() != 17)
+    if (_rSession)
     {
-        return false; // Invalid MAC address length
+        RSession_destroy(_rSession);
     }
-
-    std::istringstream iss(macStr);
-    char separator;
-
-    for (int i = 0; i < 6; ++i)
-    {
-        int byte;
-        iss >> std::hex >> byte >> separator;
-
-        // TODO: fix
-        if (i < 5 && separator != ':')
-        {
-            return false; // Invalid format
-        }
-
-        macAddress[i] = static_cast<uint8_t>(byte);
-    }
-
-    return true;
 }
 
 void GoosePublisherWrapper::PublishMessage(bool value)
@@ -74,63 +86,44 @@ void GoosePublisherWrapper::Print()
     std::ofstream outputFile("output-goose.txt");
     if (outputFile.is_open())
     {
-        outputFile << "GoosePublisherWrapper Configuration:\n";
-        outputFile << "  Interface: " << _interface << "\n";
+        outputFile << "GoosePublisherWrapper Configuration (rGOOSE):\n";
         outputFile << "  GoID: " << _goId << "\n";
         outputFile << "  GoCbRef: " << _goCbRef << "\n";
         outputFile << "  TimeAllowedToLive: " << _timeAllowedToLive << "\n";
         outputFile << "  DataSetRef: " << _dataSetRef << "\n";
         outputFile << "  ConfRev: " << _confRev << "\n";
-        outputFile << "  VlanPriority: " << static_cast<int>(_commParameters.vlanPriority) << "\n";
-        outputFile << "  VlanId: " << _commParameters.vlanId << "\n";
-        outputFile << "  AppId: " << _commParameters.appId << "\n";
-        outputFile << "  DstAddress: " << GoosePublisherWrapper::MacAddressToString(_commParameters.dstAddress) << "\n";
+        outputFile << "  AppId: " << _appId << "\n";
+        outputFile << "  RemoteAddress: " << _remoteAddress << "\n";
+        outputFile << "  RemotePort: " << _remotePort << "\n";
         outputFile.close();
     }
 }
 
-std::string GoosePublisherWrapper::MacAddressToString(const uint8_t macAddress[6])
-{
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-    for (int i = 0; i < 6; ++i)
-    {
-        oss << std::setw(2) << static_cast<int>(macAddress[i]);
-        if (i < 5)
-        {
-            oss << ":";
-        }
-    }
-    return oss.str();
-}
-
 void GoosePublisherWrapper::ParseSettings(const nlohmann::json &settings)
 {
-    _interface = settings.at("ethernetInterface").get<std::string>();
+    _appId = settings.at("appId").get<uint16_t>();
     _goId = settings.at("goId").get<std::string>();
     _goCbRef = settings.at("goCb").get<std::string>();
     _timeAllowedToLive = settings.at("timeAllowedToLive").get<uint32_t>();
     _dataSetRef = settings.at("dataSetRef").get<std::string>();
     _confRev = settings.at("confRev").get<uint32_t>();
-    _commParameters.vlanPriority = settings.at("vlanPriority").get<uint8_t>();
-    _commParameters.vlanId = settings.at("vlanId").get<uint16_t>();
-    _commParameters.appId = settings.at("appId").get<uint16_t>();
+    _simulation = settings.value("simulation", false);
+    _ndsCom = settings.value("ndsCom", false);
 
-    std::string dstAddress = settings.at("dstAddress").get<std::string>();
-    uint8_t parsedDstAddress[6];
-    if (ParseMacAddress(dstAddress, parsedDstAddress))
+    const auto &rSessionSettings = settings.at("rSessionSettings");
+    _remoteAddress = rSessionSettings.at("remoteAddress").get<std::string>();
+    _remotePort = rSessionSettings.at("remotePort").get<int>();
+    _localAddress = rSessionSettings.value("localAddress", "");
+    _localPort = rSessionSettings.value("localPort", -1);
+    _activeKeyId = rSessionSettings.value("activeKeyId", 0);
+
+    for (const auto &keyJson : rSessionSettings.at("keys"))
     {
-        for (int i = 0; i < 6; ++i)
-        {
-            _commParameters.dstAddress[i] = parsedDstAddress[i];
-        }
-    }
-    else
-    {
-        // Broadcast MAC address
-        for (int i = 0; i < 6; ++i)
-        {
-            _commParameters.dstAddress[i] = 0xFF;
-        }
+        GooseRSessionKey key;
+        key.id = keyJson.at("id").get<int>();
+        key.key = keyJson.at("key").get<std::string>();
+        key.secAlgo = keyJson.at("secAlgo").get<std::string>();
+        key.sigAlgo = keyJson.at("sigAlgo").get<std::string>();
+        _keys.push_back(key);
     }
 }

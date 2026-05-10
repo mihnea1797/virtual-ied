@@ -1,18 +1,28 @@
 {
   "gooseSettings": {
-    "vlanPriority": 4,
-    "vlanId": 0,
     "appId": 1,
-    "dstAddress": "01:0c:cd:01:00:00",
-    "ethernetInterface": "eth0",
-    "useVlanTag": false,
     "goId": "AA1J4Q15A1LD0/LLN0.RPG",
     "goCb": "AA1J4Q15A1LD0/LLN0$GO$RPG",
     "timeAllowedToLive": 20000,
     "dataSetRef": "AA1J4Q15A1LD0/LLN0$Gss",
     "simulation": false,
     "confRev": 200,
-    "ndsCom": false
+    "ndsCom": false,
+    "rSessionSettings": {
+      "remoteAddress": "10.10.40.2",
+      "remotePort": 102,
+      "localAddress": "",
+      "localPort": -1,
+      "activeKeyId": 1,
+      "keys": [
+        {
+          "id": 1,
+          "key": "0123456789ABCDEF",
+          "secAlgo": "AES_128_GCM",
+          "sigAlgo": "NONE"
+        }
+      ]
+    }
   },
   "sampledValuesSettings": [
     {
@@ -26,14 +36,14 @@
         },
         "signalProperties":{
             "samplesPerPeriod": 80,
-            "scalingConstant": 10000
+            "scalingConstant": 1000
         },
         "filterProperties":{
             "order": 0,
             "cutoffFrequency": 200,
             "samplingFrequency": 4000
         },
-        "ethernetInterface": "eth0",
+        "ethernetInterface": "eth1",
         "dstAddressCheck": false,
         "rSessionSettings": {
             "localAddress": "0.0.0.0",
