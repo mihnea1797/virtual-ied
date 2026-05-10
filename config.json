@@ -1,0 +1,12 @@
+{
+  "iface":      "eth0",
+  "freq":       50.0,
+  "amp1":       210.0,
+  "amp2":       250.0,
+  "stepTime":   10.0,
+  "threshold":  230.0,
+  "sampleRate": 4000,
+  "remoteIP":   "10.10.30.2",
+  "remotePort": 102,
+  "autoStart":  false
+}

@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <string>
@@ -290,8 +291,54 @@ void sv_publisher_run(Config cfg)
 
 // ---------------- HTTP server (UI + control) ----------------
 
+static void load_config_file(const std::string &path)
+{
+  std::ifstream f(path);
+  if (!f.is_open()) {
+    std::cout << "[CFG] No config file found at '" << path << "', using defaults.\n";
+    return;
+  }
+  auto j = json::parse(f, nullptr, false);
+  if (j.is_discarded()) {
+    std::cerr << "[CFG] Failed to parse '" << path << "', using defaults.\n";
+    return;
+  }
+  bool autoStart = j.value("autoStart", false);
+  {
+    std::lock_guard<std::mutex> lk(g.m);
+    g.cfg.iface      = j.value("iface",      g.cfg.iface);
+    g.cfg.freq       = j.value("freq",       g.cfg.freq);
+    g.cfg.amp1       = j.value("amp1",       g.cfg.amp1);
+    g.cfg.amp2       = j.value("amp2",       g.cfg.amp2);
+    g.cfg.stepTime   = j.value("stepTime",   g.cfg.stepTime);
+    g.cfg.threshold  = j.value("threshold",  g.cfg.threshold);
+    g.cfg.sampleRate = j.value("sampleRate", g.cfg.sampleRate);
+    g.cfg.remoteIP   = j.value("remoteIP",   g.cfg.remoteIP);
+    g.cfg.remotePort = j.value("remotePort", g.cfg.remotePort);
+  }
+  std::cout << "[CFG] Loaded config from '" << path << "'.\n";
+
+  if (autoStart) {
+    std::cout << "[CFG] autoStart=true — starting simulation immediately.\n";
+    g.running.store(true);
+    g.thresholdArmed.store(true);
+    g.stepOccurred.store(false);
+    g.thresholdCrossed.store(false);
+    g.tStart = Clock::now();
+    g.logger.open(g.tStart);
+    g.logger.log("start");
+    Config cfgSnapshot;
+    { std::lock_guard<std::mutex> lk(g.m); cfgSnapshot = g.cfg; }
+    std::thread(sv_publisher_run, cfgSnapshot).detach();
+    std::thread(goose_sniffer, cfgSnapshot).detach();
+  }
+}
+
 int main(int argc, char **argv)
 {
+  const std::string cfgPath = (argc >= 2) ? argv[1] : "config.json";
+  load_config_file(cfgPath);
+
   httplib::Server svr;
 
   // UI
