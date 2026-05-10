@@ -22,17 +22,35 @@
 
 using json = nlohmann::json;
 
+struct KeyConfig
+{
+  int         id    = 1;
+  std::string value = "";
+};
+
+struct GooseSubConfig
+{
+  std::string            localIP    = "0.0.0.0";
+  int                    localPort  = 102;
+  std::string            remoteIP   = "10.10.30.2";
+  int                    remotePort = 102;
+  std::string            goCbRef    = ""; // empty = observer mode (match any)
+  std::vector<KeyConfig> keys       = {{1, "0123456789ABCDEF"}, {2, "FEDCBA9876543210"}};
+};
+
 struct Config
 {
-  std::string iface = "eth0";
-  double freq = 50.0;
-  double amp1 = 210.0;
-  double amp2 = 250.0;
-  double stepTime = 10.0; // seconds
-  double threshold = 230.0;
-  int sampleRate = 4000; // 80 smp/cyc @ 50 Hz
-  std::string remoteIP = "10.10.30.2";
-  int remotePort = 102;
+  std::string    iface      = "eth0";
+  double         freq       = 50.0;
+  double         amp1       = 210.0;
+  double         amp2       = 250.0;
+  double         stepTime   = 10.0; // seconds
+  double         threshold  = 230.0;
+  int            sampleRate = 4000; // 80 smp/cyc @ 50 Hz
+  std::string    svLocalIP  = "10.10.40.2";
+  std::string    remoteIP   = "10.10.30.2";
+  int            remotePort = 102;
+  GooseSubConfig goose;
 };
 
 struct State
@@ -132,15 +150,14 @@ void goose_sniffer(Config cfg)
     return;
   }
 
-  // Listen on all interfaces at the same port the remote GOOSE publisher targets
-  RSession_setLocalAddress(rxSession, "0.0.0.0", cfg.remotePort);
-  RSession_setRemoteAddress(rxSession, cfg.remoteIP.c_str(), cfg.remotePort);
+  RSession_setLocalAddress(rxSession, cfg.goose.localIP.c_str(), cfg.goose.localPort);
+  RSession_setRemoteAddress(rxSession, cfg.goose.remoteIP.c_str(), cfg.goose.remotePort);
 
-  // Keys must match those used by the R-GOOSE publisher
-  const char *key1 = "0123456789ABCDEF";
-  const char *key2 = "FEDCBA9876543210";
-  RSession_addKey(rxSession, 1, (uint8_t *)key1, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
-  RSession_addKey(rxSession, 2, (uint8_t *)key2, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
+  for (const auto &k : cfg.goose.keys)
+    RSession_addKey(rxSession, k.id,
+                    reinterpret_cast<const uint8_t *>(k.value.data()),
+                    static_cast<int>(k.value.size()),
+                    R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
 
   GooseReceiver receiver = GooseReceiver_createRemote(rxSession);
   if (!receiver)
@@ -150,9 +167,9 @@ void goose_sniffer(Config cfg)
     return;
   }
 
-  // Observer mode: match any R-GOOSE message regardless of goCbRef
-  GooseSubscriber subscriber = GooseSubscriber_create("", nullptr);
-  GooseSubscriber_setObserver(subscriber);
+  GooseSubscriber subscriber = GooseSubscriber_create(cfg.goose.goCbRef.c_str(), nullptr);
+  if (cfg.goose.goCbRef.empty())
+    GooseSubscriber_setObserver(subscriber); // match any R-GOOSE message
   GooseSubscriber_setListener(subscriber, rgoose_listener_cb, nullptr);
   GooseReceiver_addSubscriber(receiver, subscriber);
 
@@ -188,7 +205,7 @@ void sv_publisher_run(Config cfg)
     return;
   }
 
-  RSession_setLocalAddress(rSession, "10.10.40.2", -1);
+  RSession_setLocalAddress(rSession, cfg.svLocalIP.c_str(), -1);
   RSession_setRemoteAddress(rSession, cfg.remoteIP.c_str(), cfg.remotePort);
 
   const char *key1 = "0123456789ABCDEF";
@@ -334,6 +351,22 @@ static void load_config_file(const std::string &path)
     g.cfg.sampleRate = j.value("sampleRate", g.cfg.sampleRate);
     g.cfg.remoteIP   = j.value("remoteIP",   g.cfg.remoteIP);
     g.cfg.remotePort = j.value("remotePort", g.cfg.remotePort);
+    g.cfg.svLocalIP  = j.value("svLocalIP",  g.cfg.svLocalIP);
+    if (j.contains("goose") && j["goose"].is_object()) {
+      const auto &jg = j["goose"];
+      g.cfg.goose.localIP    = jg.value("localIP",    g.cfg.goose.localIP);
+      g.cfg.goose.localPort  = jg.value("localPort",  g.cfg.goose.localPort);
+      g.cfg.goose.remoteIP   = jg.value("remoteIP",   g.cfg.goose.remoteIP);
+      g.cfg.goose.remotePort = jg.value("remotePort", g.cfg.goose.remotePort);
+      g.cfg.goose.goCbRef    = jg.value("goCbRef",    g.cfg.goose.goCbRef);
+      if (jg.contains("keys") && jg["keys"].is_array()) {
+        g.cfg.goose.keys.clear();
+        for (const auto &k : jg["keys"]) {
+          if (k.contains("id") && k.contains("value"))
+            g.cfg.goose.keys.push_back({k["id"].get<int>(), k["value"].get<std::string>()});
+        }
+      }
+    }
   }
   std::cout << "[CFG] Loaded config from '" << path << "'.\n";
 
@@ -380,6 +413,22 @@ int main(int argc, char **argv)
     g.cfg.sampleRate = j.value("sampleRate", g.cfg.sampleRate);
     g.cfg.remoteIP   = j.value("remoteIP",   g.cfg.remoteIP);
     g.cfg.remotePort = j.value("remotePort", g.cfg.remotePort);
+    g.cfg.svLocalIP  = j.value("svLocalIP",  g.cfg.svLocalIP);
+    if (j.contains("goose") && j["goose"].is_object()) {
+      const auto &jg = j["goose"];
+      g.cfg.goose.localIP    = jg.value("localIP",    g.cfg.goose.localIP);
+      g.cfg.goose.localPort  = jg.value("localPort",  g.cfg.goose.localPort);
+      g.cfg.goose.remoteIP   = jg.value("remoteIP",   g.cfg.goose.remoteIP);
+      g.cfg.goose.remotePort = jg.value("remotePort", g.cfg.goose.remotePort);
+      g.cfg.goose.goCbRef    = jg.value("goCbRef",    g.cfg.goose.goCbRef);
+      if (jg.contains("keys") && jg["keys"].is_array()) {
+        g.cfg.goose.keys.clear();
+        for (const auto &k : jg["keys"]) {
+          if (k.contains("id") && k.contains("value"))
+            g.cfg.goose.keys.push_back({k["id"].get<int>(), k["value"].get<std::string>()});
+        }
+      }
+    }
 
     res.set_content("{}", "application/json"); });
 

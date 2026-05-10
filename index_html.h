@@ -34,8 +34,18 @@ inline constexpr const char* INDEX_HTML = R"HTML(<!doctype html>
       <label>Step time (s)</label><input id="stepTime" type="number" value="10">
       <label>Threshold (Vrms)</label><input id="threshold" type="number" value="90">
       <label>Sample rate (sps)</label><input id="srate" type="number" value="4000">
-      <label>Remote IP</label><input id="remoteIP" value="230.0.10.10">
+      <label>SV Local IP</label><input id="svLocalIP" value="10.10.40.2">
+      <label>Remote IP (vIED)</label><input id="remoteIP" value="10.10.30.2">
       <label>Remote Port</label><input id="remotePort" type="number" value="102">
+    </fieldset>
+    <fieldset>
+      <legend>R-GOOSE Subscriber</legend>
+      <label>Local IP</label><input id="gLocalIP" value="0.0.0.0">
+      <label>Local Port</label><input id="gLocalPort" type="number" value="102">
+      <label>Remote IP (vIED)</label><input id="gRemoteIP" value="10.10.30.2">
+      <label>Remote Port</label><input id="gRemotePort" type="number" value="102">
+      <label>GoCbRef (empty = any)</label><input id="goCbRef" value="">
+      <p class="muted" style="margin:6px 0 0">Security keys can only be set via <code>config.json</code>.</p>
     </fieldset>
     <div>
       <button id="apply">Apply</button>
@@ -91,8 +101,16 @@ document.getElementById('apply').onclick = async ()=>{
     stepTime: parseFloat(document.getElementById('stepTime').value),
     threshold: parseFloat(document.getElementById('threshold').value),
     sampleRate: parseInt(document.getElementById('srate').value),
+    svLocalIP: document.getElementById('svLocalIP').value,
     remoteIP: document.getElementById('remoteIP').value,
-    remotePort: parseInt(document.getElementById('remotePort').value)
+    remotePort: parseInt(document.getElementById('remotePort').value),
+    goose: {
+      localIP:    document.getElementById('gLocalIP').value,
+      localPort:  parseInt(document.getElementById('gLocalPort').value),
+      remoteIP:   document.getElementById('gRemoteIP').value,
+      remotePort: parseInt(document.getElementById('gRemotePort').value),
+      goCbRef:    document.getElementById('goCbRef').value
+    }
   };
   try { await post('/configure', body); alert('Config applied'); }
   catch(e){ alert(e); }

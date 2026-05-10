@@ -6,7 +6,19 @@
   "stepTime":   10.0,
   "threshold":  230.0,
   "sampleRate": 4000,
+  "svLocalIP":  "10.10.40.2",
   "remoteIP":   "10.10.30.2",
   "remotePort": 102,
+  "goose": {
+    "localIP":    "0.0.0.0",
+    "localPort":  102,
+    "remoteIP":   "10.10.30.2",
+    "remotePort": 102,
+    "goCbRef":    "",
+    "keys": [
+      {"id": 1, "value": "0123456789ABCDEF"},
+      {"id": 2, "value": "FEDCBA9876543210"}
+    ]
+  },
   "autoStart":  false
 }
