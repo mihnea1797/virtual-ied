@@ -84,12 +84,11 @@ SampledValuesSubscriberWrapper::~SampledValuesSubscriberWrapper()
 
 void SampledValuesSubscriberWrapper::SetListener(std::function<void(bool)> goosePublishMessageFunction)
 {
-    static constexpr double sqrt2 = 1.4142135623730951;
     goosePublishMessageFunction(false);
     _listenerParams.appId = _appId;
     _listenerParams.goosePublishMessageFunction = &goosePublishMessageFunction;
-    _listenerParams.voltageThreshold = _voltageThreshold / sqrt2;
-    _listenerParams.currentThreshold = _currentThreshold / sqrt2;
+    _listenerParams.voltageThreshold = _voltageThreshold;
+    _listenerParams.currentThreshold = _currentThreshold;
     SVSubscriber_setListener(_subscriber, SvUpdateListener, &_listenerParams);
     listenerSet = true;
 }
@@ -126,7 +125,7 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMe
             return false;
         while (offset < dataSize)
         {
-            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t voltageValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             voltageMeasurements.push_back(voltageValue);
             offset += 4;
 
@@ -140,7 +139,7 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMe
             return false;
         while (offset < dataSize)
         {
-            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t currentValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             currentMeasurements.push_back(currentValue);
             offset += 4;
 
@@ -154,7 +153,7 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMe
             return false;
         while (offset < dataSize / 2)
         {
-            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t voltageValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             voltageMeasurements.push_back(voltageValue);
             offset += 4;
 
@@ -164,7 +163,7 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMe
 
         while (offset < dataSize)
         {
-            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t currentValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             currentMeasurements.push_back(currentValue);
             offset += 4;
 
@@ -178,7 +177,7 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMe
             return false;
         while (offset < dataSize / 2)
         {
-            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t currentValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             currentMeasurements.push_back(currentValue);
             offset += 4;
 
@@ -188,7 +187,7 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMe
 
         while (offset < dataSize)
         {
-            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t voltageValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             voltageMeasurements.push_back(voltageValue);
             offset += 4;
 
@@ -202,14 +201,14 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMe
             return false;
         while (offset < dataSize)
         {
-            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t voltageValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             voltageMeasurements.push_back(voltageValue);
             offset += 4;
 
             Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
             offset += 4;
 
-            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t currentValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             currentMeasurements.push_back(currentValue);
             offset += 4;
 
@@ -223,14 +222,14 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMe
             return false;
         while (offset < dataSize)
         {
-            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t currentValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             currentMeasurements.push_back(currentValue);
             offset += 4;
 
             Quality currentQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
             offset += 4;
 
-            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t voltageValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             voltageMeasurements.push_back(voltageValue);
             offset += 4;
 
@@ -244,14 +243,14 @@ bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMe
             return false;
         while (offset < dataSize)
         {
-            int32_t voltageValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t voltageValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             voltageMeasurements.push_back(voltageValue);
             offset += 4;
 
             Quality voltageQuality = SVSubscriber_ASDU_getQuality(asdu, offset);
             offset += 4;
 
-            int32_t currentValue = SVSubscriber_ASDU_getINT32(asdu, offset);
+            int32_t currentValue = static_cast<int32_t>(SVSubscriber_ASDU_getFLOAT32(asdu, offset) * 1000.0f);
             currentMeasurements.push_back(currentValue);
             offset += 4;
 
