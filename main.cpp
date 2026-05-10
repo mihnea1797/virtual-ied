@@ -2,7 +2,9 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <ctime>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <string>
@@ -84,21 +86,38 @@ static void rgoose_listener_cb(GooseSubscriber /*subscriber*/, void * /*paramete
   {
     g.tGoose = Clock::now();
 
+    // Get absolute reception timestamp for console
+    auto now_sys = std::chrono::system_clock::now();
+    auto tt      = std::chrono::system_clock::to_time_t(now_sys);
+    auto sysMs   = std::chrono::duration_cast<std::chrono::milliseconds>(
+                     now_sys.time_since_epoch()) % 1000;
+    std::tm tm_buf;
+    gmtime_r(&tt, &tm_buf);
+    char tsBuf[32];
+    std::strftime(tsBuf, sizeof(tsBuf), "%Y-%m-%dT%H:%M:%S", &tm_buf);
+    std::cout << "[R-GOOSE] received at " << tsBuf
+              << '.' << std::setfill('0') << std::setw(3) << sysMs.count() << 'Z' << '\n';
+
+    double msStep   = -1.0;
+    double msThresh = -1.0;
+
     if (g.stepOccurred.load())
     {
-      double msStep = std::chrono::duration<double, std::milli>(g.tGoose - g.tStep).count();
+      msStep = std::chrono::duration<double, std::milli>(g.tGoose - g.tStep).count();
       g.latencyFromStepMs.store(msStep);
-      std::cout << "[R-GOOSE] latency step -> R-GOOSE = " << msStep << " ms\n";
+      std::cout << "[R-GOOSE] latency step      -> GOOSE = "
+                << std::fixed << std::setprecision(3) << msStep << " ms\n";
     }
 
     if (g.thresholdCrossed.load())
     {
-      double msThresh = std::chrono::duration<double, std::milli>(g.tGoose - g.tThreshold).count();
+      msThresh = std::chrono::duration<double, std::milli>(g.tGoose - g.tThreshold).count();
       g.latencyFromThresholdMs.store(msThresh);
-      std::cout << "[R-GOOSE] latency threshold -> R-GOOSE = " << msThresh << " ms\n";
+      std::cout << "[R-GOOSE] latency threshold -> GOOSE = "
+                << std::fixed << std::setprecision(3) << msThresh << " ms\n";
     }
 
-    g.logger.log("goose");
+    g.logger.log_goose(msStep, msThresh);
     g.gooseSeen.store(true);
   }
 }

@@ -15,5 +15,6 @@ struct Logger
 
   void open(Clock::time_point t);
   void log(const std::string &event_type);
+  void log_goose(double lat_step_ms, double lat_threshold_ms);
   void close();
 };
