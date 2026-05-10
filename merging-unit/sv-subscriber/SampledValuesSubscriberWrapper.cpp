@@ -1,23 +1,8 @@
 #include "SampledValuesSubscriberWrapper.hpp"
 
-// Static member initialization
-std::unique_ptr<pqxx::connection> SampledValuesSubscriberWrapper::dbConn_ = nullptr;
-
-std::vector<RmsComputationObject> SampledValuesSubscriberWrapper::voltageRmsObject;
-std::vector<RmsComputationObject> SampledValuesSubscriberWrapper::currentRmsObject;
-
-std::vector<ButterworthFilter> SampledValuesSubscriberWrapper::voltageButterFilter;
-std::vector<ButterworthFilter> SampledValuesSubscriberWrapper::currentButterFilter;
-
-std::vector<FrequencyTracking> SampledValuesSubscriberWrapper::voltageFrequencyTracker;
-std::vector<FrequencyTracking> SampledValuesSubscriberWrapper::currentFrequencyTracker;
-
-DataFormat SampledValuesSubscriberWrapper::format = DataFormat::pairVI;
-uint8_t SampledValuesSubscriberWrapper::numberOfPhases = 4;
-
-SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &sampleValuesSettings)
+SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::json &receiverSettings)
 {
-    ParseSettings(sampleValuesSettings);
+    ParseReceiverSettings(receiverSettings);
 
     if (!_localAddress.empty())
     {
@@ -58,8 +43,6 @@ SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::j
 
     SVReceiver_setInterfaceId(_receiver, const_cast<char *>(_interface.c_str()));
 
-    _subscriber = SVSubscriber_create(NULL, _appId);
-
     if (_destAddrCheck)
     {
         SVReceiver_enableDestAddrCheck(_receiver);
@@ -68,13 +51,15 @@ SampledValuesSubscriberWrapper::SampledValuesSubscriberWrapper(const nlohmann::j
     {
         SVReceiver_disableDestAddrCheck(_receiver);
     }
-
-    SVReceiver_addSubscriber(_receiver, _subscriber);
 }
 
 SampledValuesSubscriberWrapper::~SampledValuesSubscriberWrapper()
 {
     SVReceiver_stop(_receiver);
+    for (SVSubscriber subscriber : _subscribers)
+    {
+        SVSubscriber_destroy(subscriber);
+    }
     SVReceiver_destroy(_receiver);
     if (_rSession)
     {
@@ -82,23 +67,70 @@ SampledValuesSubscriberWrapper::~SampledValuesSubscriberWrapper()
     }
 }
 
-void SampledValuesSubscriberWrapper::SetListener(std::function<void(bool)> goosePublishMessageFunction)
+void SampledValuesSubscriberWrapper::addStream(const nlohmann::json &streamConfig, std::function<void(bool)> publishFn)
 {
-    goosePublishMessageFunction(false);
-    _listenerParams.appId = _appId;
-    _listenerParams.goosePublishMessageFunction = &goosePublishMessageFunction;
-    _listenerParams.voltageThreshold = _voltageThreshold;
-    _listenerParams.currentThreshold = _currentThreshold;
-    SVSubscriber_setListener(_subscriber, SvUpdateListener, &_listenerParams);
-    listenerSet = true;
+    auto params = std::make_unique<ListenerParameters>();
+    params->appId             = streamConfig.at("appId").get<uint16_t>();
+    params->voltageThreshold  = streamConfig.at("threshold").get<double>();
+    params->currentThreshold  = streamConfig.at("threshold").get<double>();
+    params->goosePublishMessageFunction = std::move(publishFn);
+    params->dbConn = _dbConn.get();
+
+    // Parse data format
+    const auto &dataFormat        = streamConfig.at("dataFormat");
+    std::string measurementOrder  = dataFormat.at("measurementOrder").get<std::string>();
+    std::string clusteringType    = dataFormat.at("clusteringType").get<std::string>();
+    params->state.numberOfPhases  = dataFormat.at("numberOfPhases").get<uint8_t>();
+
+    if (clusteringType == "cluster")
+    {
+        if (measurementOrder == "voltageFirst")  params->state.format = DataFormat::clusterVI;
+        else if (measurementOrder == "currentFirst") params->state.format = DataFormat::clusterIV;
+    }
+    else if (clusteringType == "pair")
+    {
+        if (measurementOrder == "voltageFirst")  params->state.format = DataFormat::pairVI;
+        else if (measurementOrder == "currentFirst") params->state.format = DataFormat::pairIV;
+    }
+    else if (clusteringType == "single")
+    {
+        if (measurementOrder == "voltageFirst")  params->state.format = DataFormat::onlyV;
+        else if (measurementOrder == "currentFirst") params->state.format = DataFormat::onlyI;
+    }
+
+    const auto &signalProperties = streamConfig.at("signalProperties");
+    const auto &filterProperties = streamConfig.at("filterProperties");
+
+    for (uint32_t i = 0; i < params->state.numberOfPhases; i++)
+    {
+        if (params->state.format != DataFormat::onlyI)
+        {
+            params->state.voltageRmsObject.emplace_back(signalProperties);
+            params->state.voltageButterFilter.emplace_back(filterProperties);
+            params->state.voltageFrequencyTracker.push_back(FrequencyTracking());
+        }
+        if (params->state.format != DataFormat::onlyV)
+        {
+            params->state.currentRmsObject.emplace_back(signalProperties);
+            params->state.currentButterFilter.emplace_back(filterProperties);
+            params->state.currentFrequencyTracker.push_back(FrequencyTracking());
+        }
+    }
+
+    SVSubscriber subscriber = SVSubscriber_create(NULL, params->appId);
+    SVSubscriber_setListener(subscriber, SvUpdateListener, params.get());
+    SVReceiver_addSubscriber(_receiver, subscriber);
+
+    _subscribers.push_back(subscriber);
+    _listenerParams.push_back(std::move(params));
 }
 
 void SampledValuesSubscriberWrapper::Start()
 {
     printf("Starting Listener...\n");
-    if (!listenerSet)
+    if (_subscribers.empty())
     {
-        printf("Listener not set\n");
+        printf("No streams added — call addStream() before Start()\n");
         return;
     }
 
@@ -110,7 +142,7 @@ void SampledValuesSubscriberWrapper::Start()
     }
 }
 
-bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu)
+bool SampledValuesSubscriberWrapper::parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu, DataFormat format)
 {
     voltageMeasurements.clear();
     currentMeasurements.clear();
@@ -274,145 +306,82 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
     std::vector<int32_t> voltageMeasurements;
     std::vector<int32_t> currentMeasurements;
 
-    if (parseSVData(voltageMeasurements, currentMeasurements, asdu))
-    {        
-        if(format != DataFormat::onlyI)
-        {    
-            if(voltageMeasurements.size() < numberOfPhases)
+    if (parseSVData(voltageMeasurements, currentMeasurements, asdu, params->state.format))
+    {
+        if (params->state.format != DataFormat::onlyI)
+        {
+            if (voltageMeasurements.size() < params->state.numberOfPhases)
             {
                 printf("Less voltage measurements than the number of phases! Change the number of phases!\n");
                 return;
             }
-            for(uint32_t index = 0; index < numberOfPhases; index++)
+            for (uint32_t index = 0; index < params->state.numberOfPhases; index++)
             {
-                int32_t filteredValue = voltageButterFilter[index].filter(voltageMeasurements[index]);
-                double rms = voltageRmsObject[index].computeValue(filteredValue);
-                // double rms = voltageRmsObject[index].computeValue(voltageMeasurements[index]);
+                int32_t filteredValue = params->state.voltageButterFilter[index].filter(voltageMeasurements[index]);
+                double rms = params->state.voltageRmsObject[index].computeValue(filteredValue);
+                // double rms = params->state.voltageRmsObject[index].computeValue(voltageMeasurements[index]);
 
-                if(dbConn_)
+                if (params->dbConn)
                 {
-                    storeRMSinDatabase(params->appId, index, rms, "V");
+                    storeRMSinDatabase(*params->dbConn, params->appId, index, rms, "V");
                 }
 
                 if (params->goosePublishMessageFunction)
                 {
                     printf("Checking voltage RMS value for phase %d : %.2lf\n", index + 1, rms);
-                    if(rms > params->voltageThreshold)
+                    if (rms > params->voltageThreshold)
                     {
-                        (*(params->goosePublishMessageFunction))(true);
+                        params->goosePublishMessageFunction(true);
                     }
                 }
 
-                // double estimatedFrequency = voltageFrequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
-                // double estimatedFrequency = voltageFrequencyTracker[index].frequencyEstimation(voltageMeasurements[index], sampleTimeStamp);
+                // double estimatedFrequency = params->state.voltageFrequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
+                // double estimatedFrequency = params->state.voltageFrequencyTracker[index].frequencyEstimation(voltageMeasurements[index], sampleTimeStamp);
             }
         }
 
-        if(format != DataFormat::onlyV)
-        {    
-            if(currentMeasurements.size() < numberOfPhases)
+        if (params->state.format != DataFormat::onlyV)
+        {
+            if (currentMeasurements.size() < params->state.numberOfPhases)
             {
                 printf("Less current measurements than the number of phases! Change the number of phases!\n");
                 return;
             }
-            for(uint32_t index = 0; index < numberOfPhases; index++)
+            for (uint32_t index = 0; index < params->state.numberOfPhases; index++)
             {
-                int32_t filteredValue = currentButterFilter[index].filter(currentMeasurements[index]);
-                double rms = currentRmsObject[index].computeValue(filteredValue);
-                // double rms = currentRmsObject[index].computeValue(currentMeasurements[index]);
+                int32_t filteredValue = params->state.currentButterFilter[index].filter(currentMeasurements[index]);
+                double rms = params->state.currentRmsObject[index].computeValue(filteredValue);
+                // double rms = params->state.currentRmsObject[index].computeValue(currentMeasurements[index]);
 
-                if(dbConn_)
+                if (params->dbConn)
                 {
-                    storeRMSinDatabase(params->appId, index, rms, "C");
+                    storeRMSinDatabase(*params->dbConn, params->appId, index, rms, "C");
                 }
 
                 if (params->goosePublishMessageFunction)
                 {
-                    if (params->goosePublishMessageFunction)
+                    printf("Checking current RMS value for phase %d : %.2lf\n", index + 1, rms);
+                    if (rms > params->currentThreshold)
                     {
-                        printf("Checking current RMS value for phase %d : %.2lf\n", index + 1, rms);
-                        if(rms > params->currentThreshold)
-                        {
-                            (*(params->goosePublishMessageFunction))(true);
-                        }
+                        params->goosePublishMessageFunction(true);
                     }
                 }
 
-                // double estimatedFrequency = currentFrequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
-                // double estimatedFrequency = currentFrequencyTracker[index].frequencyEstimation(currentMeasurements[index], sampleTimeStamp);
+                // double estimatedFrequency = params->state.currentFrequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
+                // double estimatedFrequency = params->state.currentFrequencyTracker[index].frequencyEstimation(currentMeasurements[index], sampleTimeStamp);
             }
         }
     }
-}
-
-void SampledValuesSubscriberWrapper::setVoltageRmsObject(const nlohmann::json & signalProperties)
-{
-    voltageRmsObject.emplace_back(signalProperties);
-}
-
-void SampledValuesSubscriberWrapper::setCurrentRmsObject(const nlohmann::json & signalProperties)
-{
-    currentRmsObject.emplace_back(signalProperties);
-}
-
-void SampledValuesSubscriberWrapper::setVoltageButterFilter(const nlohmann::json & filterProperties)
-{
-    voltageButterFilter.emplace_back(filterProperties);
-}
-
-void SampledValuesSubscriberWrapper::setCurrentButterFilter(const nlohmann::json & filterProperties)
-{
-    currentButterFilter.emplace_back(filterProperties);
-}
-
-void SampledValuesSubscriberWrapper::setVoltageFrequencyTracker()
-{
-    voltageFrequencyTracker.push_back(FrequencyTracking());
-}
-
-void SampledValuesSubscriberWrapper::setCurrentFrequencyTracker()
-{
-    currentFrequencyTracker.push_back(FrequencyTracking());
 }
 
 void SampledValuesSubscriberWrapper::setPostgresConnection(const nlohmann::json &postgresSqlProperties)
 {
     try {
-        dbConn_ = std::make_unique<pqxx::connection>(ParsePostgresSQL(postgresSqlProperties));
+        _dbConn = std::make_unique<pqxx::connection>(ParsePostgresSQL(postgresSqlProperties));
     }
     catch(...) {
         printf("Unable to connect to database! Proceeding without connection...\n");
-        dbConn_ = nullptr;
-    }
-
-}
-
-void SampledValuesSubscriberWrapper::setDataFormat(const nlohmann::json &dataFormat)
-{
-    std::string measurementOrder = dataFormat.at("measurementOrder").get<std::string>();;
-    std::string clusteringType = dataFormat.at("clusteringType").get<std::string>();;
-    numberOfPhases = dataFormat.at("numberOfPhases").get<uint8_t>();
-
-    if( clusteringType == "cluster" )
-    {
-        if (measurementOrder == "voltageFirst")
-            format = DataFormat::clusterVI;
-        else if (measurementOrder == "currentFirst")
-            format = DataFormat::clusterIV;
-    }
-    else if (clusteringType == "pair")
-    {
-        if (measurementOrder == "voltageFirst")
-            format = DataFormat::pairVI;
-        else if (measurementOrder == "currentFirst")
-            format = DataFormat::pairIV;
-    }
-    else if (clusteringType == "single")
-    {
-        if (measurementOrder == "voltageFirst")
-            format = DataFormat::onlyV;
-        else if (measurementOrder == "currentFirst")
-            format = DataFormat::onlyI;
+        _dbConn = nullptr;
     }
 }
 
@@ -423,54 +392,40 @@ void SampledValuesSubscriberWrapper::Print()
     {
         outputFile << "SampledValuesSubscriberWrapper Configuration:\n";
         outputFile << "  Interface: " << _interface << "\n";
-        outputFile << "  AppId: " << _appId << "\n";
         outputFile << "  DestAddrCheck: " << (_destAddrCheck ? "true" : "false") << "\n";
-        if(format != DataFormat::onlyI)
+        for (const auto &params : _listenerParams)
         {
-            outputFile << "  Voltage Threshold: " << _voltageThreshold << "\n";
-        }
-        if(format != DataFormat::onlyV)
-        {
-            outputFile << "  Current Threshold: " << _currentThreshold << "\n";
+            outputFile << "  Stream appId: " << params->appId << "\n";
+            if (params->state.format != DataFormat::onlyI)
+                outputFile << "    Voltage Threshold: " << params->voltageThreshold << "\n";
+            if (params->state.format != DataFormat::onlyV)
+                outputFile << "    Current Threshold: " << params->currentThreshold << "\n";
         }
         outputFile.close();
     }
 }
 
-void SampledValuesSubscriberWrapper::ParseSettings(const nlohmann::json &sampleValuesSettings)
+void SampledValuesSubscriberWrapper::ParseReceiverSettings(const nlohmann::json &receiverSettings)
 {
-    _interface = sampleValuesSettings.at("ethernetInterface").get<std::string>();
-    _appId = sampleValuesSettings.at("appId").get<uint16_t>();
-    _destAddrCheck = sampleValuesSettings.at("dstAddressCheck").get<bool>();
-    _voltageThreshold = sampleValuesSettings.at("threshold").get<double>();
-    _currentThreshold = sampleValuesSettings.at("threshold").get<double>();
+    _interface    = receiverSettings.at("ethernetInterface").get<std::string>();
+    _destAddrCheck = receiverSettings.at("dstAddressCheck").get<bool>();
 
-    if (sampleValuesSettings.contains("rSessionSettings"))
+    if (receiverSettings.contains("rSessionSettings"))
     {
-        const auto &rSession = sampleValuesSettings.at("rSessionSettings");
-        _localAddress = rSession.at("localAddress").get<std::string>();
-        _port = rSession.at("port").get<int>();
+        const auto &rSession = receiverSettings.at("rSessionSettings");
+        _localAddress    = rSession.at("localAddress").get<std::string>();
+        _port            = rSession.at("port").get<int>();
         _multicastGroups = rSession.at("multicastGroups").get<std::vector<std::string>>();
         for (const auto &keyJson : rSession.at("keys"))
         {
             RSessionKey key;
-            key.id = keyJson.at("id").get<int>();
-            key.key = keyJson.at("key").get<std::string>();
+            key.id      = keyJson.at("id").get<int>();
+            key.key     = keyJson.at("key").get<std::string>();
             key.secAlgo = keyJson.at("secAlgo").get<std::string>();
             key.sigAlgo = keyJson.at("sigAlgo").get<std::string>();
             _keys.push_back(key);
         }
     }
-}
-
-uint8_t SampledValuesSubscriberWrapper::getNumberOfPhases()
-{
-    return numberOfPhases;
-}
-
-DataFormat SampledValuesSubscriberWrapper::getDataFormat()
-{
-    return format;
 }
 std::string SampledValuesSubscriberWrapper::ParsePostgresSQL(const nlohmann::json &postgresSqlProperties)
 {
@@ -483,13 +438,13 @@ std::string SampledValuesSubscriberWrapper::ParsePostgresSQL(const nlohmann::jso
     return postgresSqlConfigString;
 }
 
-void SampledValuesSubscriberWrapper::storeRMSinDatabase(uint16_t appId, uint32_t index, double rms, const std::string & measurement)
+void SampledValuesSubscriberWrapper::storeRMSinDatabase(pqxx::connection &dbConn, uint16_t appId, uint32_t index, double rms, const std::string &measurement)
 {
     std::string query =
         "INSERT INTO rms_voltage (time, app_id, phase, rms_value) "
         "VALUES (NOW(), $1, $2, $3, $4);";
 
-    pqxx::work txn(*dbConn_);
+    pqxx::work txn(dbConn);
     txn.exec_params(query, std::to_string(appId), index, rms, measurement);
     txn.commit();
 }

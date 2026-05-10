@@ -20,6 +20,12 @@ int main()
     file >> config;
 
     nlohmann::json gooseSettings = config["gooseSettings"];
+    if (!gooseSettings.is_array() || gooseSettings.empty())
+    {
+        std::cerr << "gooseSettings must be a non-empty array in config.json." << std::endl;
+        return 1;
+    }
+
     nlohmann::json sampledValuesSettingsArray = config["sampledValuesSettings"];
     if (!sampledValuesSettingsArray.is_array() || sampledValuesSettingsArray.empty())
     {
@@ -27,41 +33,24 @@ int main()
         return 1;
     }
 
-    nlohmann::json sampledValuesSettings = sampledValuesSettingsArray[0];
-    nlohmann::json signalProperties = sampledValuesSettings["signalProperties"];
-    nlohmann::json filterProperties = sampledValuesSettings["filterProperties"];
-    nlohmann::json dataFormat = sampledValuesSettings["dataFormat"];
     nlohmann::json postgresSqlProperties = config["postgresSql"];
 
-    SampledValuesSubscriberWrapper::setDataFormat(dataFormat);
-
     std::unique_ptr<GoosePublisherWrapper> goosePublisher = std::make_unique<GoosePublisherWrapper>(gooseSettings);
-    std::unique_ptr<SampledValuesSubscriberWrapper> sampledValuesSubscriber = std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettings);
-    SampledValuesSubscriberWrapper::setPostgresConnection(postgresSqlProperties);
-    
-    for(uint32_t index = 0; index < SampledValuesSubscriberWrapper::getNumberOfPhases(); index++)
+
+    // One receiver for the shared interface / R-SV session; streams are demultiplexed by appId
+    std::unique_ptr<SampledValuesSubscriberWrapper> svSubscriber =
+        std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettingsArray[0]);
+    svSubscriber->setPostgresConnection(postgresSqlProperties);
+
+    for (const auto &streamConfig : sampledValuesSettingsArray)
     {
-        if(SampledValuesSubscriberWrapper::getDataFormat() != DataFormat::onlyI)
-        {
-            SampledValuesSubscriberWrapper::setVoltageRmsObject(signalProperties);
-            SampledValuesSubscriberWrapper::setVoltageButterFilter(filterProperties);
-            SampledValuesSubscriberWrapper::setVoltageFrequencyTracker();
-        }
-        
-        if(SampledValuesSubscriberWrapper::getDataFormat() != DataFormat::onlyV)
-        {
-            SampledValuesSubscriberWrapper::setCurrentRmsObject(signalProperties);
-            SampledValuesSubscriberWrapper::setCurrentButterFilter(filterProperties);
-            SampledValuesSubscriberWrapper::setCurrentFrequencyTracker();
-        }
+        svSubscriber->addStream(streamConfig, [&goosePublisher](bool value)
+                                { goosePublisher->PublishMessage(value); });
     }
 
     goosePublisher->Print();
-    sampledValuesSubscriber->Print();
-
-    sampledValuesSubscriber->SetListener([&](bool value)
-                                         { return goosePublisher->PublishMessage(value); });
-    sampledValuesSubscriber->Start();
+    svSubscriber->Print();
+    svSubscriber->Start();
 
     while (true)
     {

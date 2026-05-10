@@ -25,14 +25,6 @@ enum class DataFormat
     pairIV
 };
 
-struct ListenerParameters
-{
-    uint16_t appId;
-    double voltageThreshold;
-    double currentThreshold;
-    std::function<void(bool)> *goosePublishMessageFunction;
-};
-
 struct RSessionKey
 {
     int id;
@@ -41,73 +33,62 @@ struct RSessionKey
     std::string sigAlgo;
 };
 
+// Per-stream processing state — one instance per subscribed appId
+struct StreamState
+{
+    std::vector<RmsComputationObject> voltageRmsObject;
+    std::vector<RmsComputationObject> currentRmsObject;
+    std::vector<ButterworthFilter>    voltageButterFilter;
+    std::vector<ButterworthFilter>    currentButterFilter;
+    std::vector<FrequencyTracking>    voltageFrequencyTracker;
+    std::vector<FrequencyTracking>    currentFrequencyTracker;
+    DataFormat format        = DataFormat::pairVI;
+    uint8_t    numberOfPhases = 4;
+};
+
+struct ListenerParameters
+{
+    uint16_t appId;
+    double voltageThreshold;
+    double currentThreshold;
+    std::function<void(bool)> goosePublishMessageFunction; // owned; heap-stable via unique_ptr
+    StreamState state;
+    pqxx::connection *dbConn = nullptr;                   // non-owning
+};
+
 class SampledValuesSubscriberWrapper
 {
 private:
     SVReceiver _receiver;
-    SVSubscriber _subscriber;
-    RSession _rSession = nullptr;
+    RSession   _rSession = nullptr;
 
-    std::string _interface;
-    uint16_t _appId;
-    bool _destAddrCheck;
-    double _voltageThreshold;
-    double _currentThreshold;
-
-    std::string _localAddress;
-    int _port;
+    std::string              _interface;
+    bool                     _destAddrCheck;
+    std::string              _localAddress;
+    int                      _port = 0;
     std::vector<std::string> _multicastGroups;
     std::vector<RSessionKey> _keys;
 
-    bool listenerSet = false;
-    ListenerParameters _listenerParams;
+    std::unique_ptr<pqxx::connection>              _dbConn;
+    std::vector<SVSubscriber>                      _subscribers;
+    std::vector<std::unique_ptr<ListenerParameters>> _listenerParams;
 
-    void ParseSettings(const nlohmann::json &settings);
+    void ParseReceiverSettings(const nlohmann::json &settings);
 
-    // Static attributes used inside of SvUpdateListener()
-    static std::vector<RmsComputationObject> voltageRmsObject;
-    static std::vector<RmsComputationObject> currentRmsObject;
-    
-    static std::vector<ButterworthFilter> voltageButterFilter;
-    static std::vector<ButterworthFilter> currentButterFilter;
-
-    static std::vector<FrequencyTracking> voltageFrequencyTracker;
-    static std::vector<FrequencyTracking> currentFrequencyTracker;
-
-    static DataFormat format;
-    static uint8_t numberOfPhases;
-
-    static std::unique_ptr<pqxx::connection> dbConn_;
-
-    // Helper functions used for static members population
-    static std::string ParsePostgresSQL(const nlohmann::json &postgresSqlPorperties);
-    static bool parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu);
-
-    // Helper function used for writing data to DataBase inside of SvUpdateListener()
-    static void storeRMSinDatabase(uint16_t appId, uint32_t index, double rms, const std::string & measurement);
-
-    // Callback function executed after an SV has been received
+    static std::string ParsePostgresSQL(const nlohmann::json &postgresSqlProperties);
+    static bool parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu, DataFormat format);
+    static void storeRMSinDatabase(pqxx::connection &dbConn, uint16_t appId, uint32_t index, double rms, const std::string &measurement);
     static void SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu);
 
 public:
-    SampledValuesSubscriberWrapper(const nlohmann::json &sampleValuesSettings);
+    SampledValuesSubscriberWrapper(const nlohmann::json &receiverSettings);
     ~SampledValuesSubscriberWrapper();
-    
-    // Setters for the static attributes
-    static void setVoltageRmsObject(const nlohmann::json & signalProperties);
-    static void setCurrentRmsObject(const nlohmann::json & signalProperties);
-    static void setVoltageButterFilter(const nlohmann::json & filterProperties);
-    static void setCurrentButterFilter(const nlohmann::json & filterProperties);
-    static void setVoltageFrequencyTracker();
-    static void setCurrentFrequencyTracker();
-    static void setDataFormat(const nlohmann::json & dataFormat);
-    static void setPostgresConnection(const nlohmann::json &postgresSqlProperties);
 
-    // Getters for the static attributes
-    static uint8_t getNumberOfPhases();
-    static DataFormat getDataFormat();
+    // Add one data stream: creates an SVSubscriber for the given appId and registers its listener
+    void addStream(const nlohmann::json &streamConfig, std::function<void(bool)> publishFn);
+
+    void setPostgresConnection(const nlohmann::json &postgresSqlProperties);
 
     void Start();
-    void SetListener(std::function<void(bool)> goosePublishMessageFunction);
     void Print();
 };

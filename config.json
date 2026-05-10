@@ -1,29 +1,31 @@
 {
-  "gooseSettings": {
-    "appId": 1,
-    "goId": "AA1J4Q15A1LD0/LLN0.RPG",
-    "goCb": "AA1J4Q15A1LD0/LLN0$GO$RPG",
-    "timeAllowedToLive": 20000,
-    "dataSetRef": "AA1J4Q15A1LD0/LLN0$Gss",
-    "simulation": false,
-    "confRev": 200,
-    "ndsCom": false,
-    "rSessionSettings": {
-      "remoteAddress": "10.10.40.2",
-      "remotePort": 102,
-      "localAddress": "",
-      "localPort": -1,
-      "activeKeyId": 1,
-      "keys": [
-        {
-          "id": 1,
-          "key": "0123456789ABCDEF",
-          "secAlgo": "AES_128_GCM",
-          "sigAlgo": "NONE"
-        }
-      ]
+  "gooseSettings": [
+    {
+      "appId": 1,
+      "goId": "AA1J4Q15A1LD0/LLN0.RPG",
+      "goCb": "AA1J4Q15A1LD0/LLN0$GO$RPG",
+      "timeAllowedToLive": 20000,
+      "dataSetRef": "AA1J4Q15A1LD0/LLN0$Gss",
+      "simulation": false,
+      "confRev": 200,
+      "ndsCom": false,
+      "rSessionSettings": {
+        "remoteAddress": "10.10.40.2",
+        "remotePort": 102,
+        "localAddress": "",
+        "localPort": -1,
+        "activeKeyId": 1,
+        "keys": [
+          {
+            "id": 1,
+            "key": "0123456789ABCDEF",
+            "secAlgo": "AES_128_GCM",
+            "sigAlgo": "NONE"
+          }
+        ]
+      }
     }
-  },
+  ],
   "sampledValuesSettings": [
     {
         "muId": "MU2",
