@@ -50,6 +50,13 @@ struct Config
   std::string    svLocalIP  = "10.10.40.2";
   std::string    remoteIP   = "10.10.30.2";
   int            remotePort = 102;
+  // R-SV stream identity — ONE stream per publisher process. For multiple SV streams
+  // (e.g. line-differential from several line ends) deploy one merging-unit container per
+  // stream, each with its own appId/svID/svLocalIP; the vIED demuxes them by appId.
+  uint16_t       appId      = 0x4000;
+  std::string    svID       = "sv1";
+  std::string    dataset    = "dataset1";
+  uint32_t       confRev    = 1;
   GooseSubConfig goose;
 };
 
@@ -155,7 +162,7 @@ void goose_sniffer(Config cfg)
 
   for (const auto &k : cfg.goose.keys)
     RSession_addKey(rxSession, k.id,
-                    reinterpret_cast<const uint8_t *>(k.value.data()),
+                    reinterpret_cast<uint8_t *>(const_cast<char *>(k.value.data())),
                     static_cast<int>(k.value.size()),
                     R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
 
@@ -167,7 +174,7 @@ void goose_sniffer(Config cfg)
     return;
   }
 
-  GooseSubscriber subscriber = GooseSubscriber_create(cfg.goose.goCbRef.c_str(), nullptr);
+  GooseSubscriber subscriber = GooseSubscriber_create(const_cast<char *>(cfg.goose.goCbRef.c_str()), nullptr);
   if (cfg.goose.goCbRef.empty())
     GooseSubscriber_setObserver(subscriber); // match any R-GOOSE message
   GooseSubscriber_setListener(subscriber, rgoose_listener_cb, nullptr);
@@ -194,7 +201,14 @@ void goose_sniffer(Config cfg)
   RSession_destroy(rxSession);
 }
 
-// ---------------- R-SV publisher thread ----------------
+// ---------------- R-SV publisher thread (one stream) ----------------
+// Publishes ONE R-SV stream, its identity (appId/svID/dataset) taken from config so each
+// merging-unit container is distinct. Multiple SV streams = multiple containers, one
+// publisher each — the vIED demuxes them by appId. (One stream per process reaches the
+// full sample rate; multiplexing N streams in one process shares a single send thread and
+// falls short.)
+static const int SV_NCH = 4; // channels per stream (bump to 8 for 4I+4V later)
+
 void sv_publisher_run(Config cfg)
 {
   RSession rSession = RSession_create();
@@ -212,11 +226,10 @@ void sv_publisher_run(Config cfg)
   const char *key2 = "FEDCBA9876543210";
   RSession_addKey(rSession, 1, (uint8_t *)key1, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
   RSession_addKey(rSession, 2, (uint8_t *)key2, 16, R_SESSION_SEC_ALGO_AES_128_GCM, R_SESSION_SIG_ALGO_NONE);
-
   uint32_t activeKeyId = 1;
   RSession_setActiveKey(rSession, activeKeyId);
 
-  SVPublisher rPub = SVPublisher_createRemote(rSession, 0x4000);
+  SVPublisher rPub = SVPublisher_createRemote(rSession, cfg.appId);
   if (!rPub)
   {
     std::cerr << "SVPublisher_createRemote failed\n";
@@ -225,7 +238,7 @@ void sv_publisher_run(Config cfg)
     return;
   }
 
-  SVPublisher_ASDU rAsdu = SVPublisher_addASDU(rPub, "sv1", "dataset1", 1);
+  SVPublisher_ASDU rAsdu = SVPublisher_addASDU(rPub, cfg.svID.c_str(), cfg.dataset.c_str(), cfg.confRev);
   if (!rAsdu)
   {
     std::cerr << "SVPublisher_addASDU failed\n";
@@ -235,8 +248,8 @@ void sv_publisher_run(Config cfg)
     return;
   }
 
-  int floatIdx[4], qualIdx[4];
-  for (int i = 0; i < 4; ++i)
+  int floatIdx[SV_NCH], qualIdx[SV_NCH];
+  for (int i = 0; i < SV_NCH; ++i)
   {
     floatIdx[i] = SVPublisher_ASDU_addFLOAT(rAsdu);
     qualIdx[i]  = SVPublisher_ASDU_addQuality(rAsdu);
@@ -245,9 +258,11 @@ void sv_publisher_run(Config cfg)
 
   SVPublisher_setupComplete(rPub);
   RSession_start(rSession);
+  std::cout << "[R-SV] publishing appId=0x" << std::hex << cfg.appId << std::dec
+            << " svID=" << cfg.svID << " dataset=" << cfg.dataset
+            << " (" << SV_NCH << " ch) @ " << cfg.sampleRate << " sa/s\n";
 
   uint64_t nextKeyChangeTime = Hal_getTimeInMs() + 5000;
-
   const double Ts = 1.0 / static_cast<double>(cfg.sampleRate);
   const double w = 2.0 * M_PI * cfg.freq;
   auto appStart = Clock::now();
@@ -261,17 +276,14 @@ void sv_publisher_run(Config cfg)
   g.latencyFromThresholdMs.store(-1.0);
 
   size_t n = 0;
-
   while (g.running.load())
   {
     const double t = n * Ts;
 
-    // step amplitude after stepTime seconds (wall-clock)
     const double elapsed = std::chrono::duration<double>(Clock::now() - appStart).count();
     const bool stepped = (elapsed >= cfg.stepTime);
     const double amp = (stepped ? cfg.amp2 : cfg.amp1) * M_SQRT2;
 
-    // Start STEP timer (first time only)
     if (stepped && !g.stepOccurred.exchange(true))
     {
       g.tStep = Clock::now();
@@ -281,7 +293,6 @@ void sv_publisher_run(Config cfg)
 
     const double val = amp * std::sin(w * t);
 
-    // threshold detection (first crossing only)
     if (g.thresholdArmed.load() && !g.thresholdCrossed.load() && val > cfg.threshold * M_SQRT2)
     {
       g.thresholdCrossed.store(true);
@@ -294,7 +305,7 @@ void sv_publisher_run(Config cfg)
     Quality_setValidity(&q, QUALITY_VALIDITY_GOOD);
 
     const float fval = static_cast<float>(val);
-    for (int ch = 0; ch < 4; ++ch)
+    for (int ch = 0; ch < SV_NCH; ++ch)
     {
       SVPublisher_ASDU_setFLOAT(rAsdu, floatIdx[ch], fval);
       SVPublisher_ASDU_setQuality(rAsdu, qualIdx[ch], q);
@@ -352,6 +363,10 @@ static void load_config_file(const std::string &path)
     g.cfg.remoteIP   = j.value("remoteIP",   g.cfg.remoteIP);
     g.cfg.remotePort = j.value("remotePort", g.cfg.remotePort);
     g.cfg.svLocalIP  = j.value("svLocalIP",  g.cfg.svLocalIP);
+    g.cfg.appId   = static_cast<uint16_t>(j.value("appId", static_cast<int>(g.cfg.appId)));
+    g.cfg.svID    = j.value("svID",    g.cfg.svID);
+    g.cfg.dataset = j.value("dataset", g.cfg.dataset);
+    g.cfg.confRev = j.value("confRev", g.cfg.confRev);
     if (j.contains("goose") && j["goose"].is_object()) {
       const auto &jg = j["goose"];
       g.cfg.goose.localIP    = jg.value("localIP",    g.cfg.goose.localIP);
@@ -414,6 +429,10 @@ int main(int argc, char **argv)
     g.cfg.remoteIP   = j.value("remoteIP",   g.cfg.remoteIP);
     g.cfg.remotePort = j.value("remotePort", g.cfg.remotePort);
     g.cfg.svLocalIP  = j.value("svLocalIP",  g.cfg.svLocalIP);
+    g.cfg.appId   = static_cast<uint16_t>(j.value("appId", static_cast<int>(g.cfg.appId)));
+    g.cfg.svID    = j.value("svID",    g.cfg.svID);
+    g.cfg.dataset = j.value("dataset", g.cfg.dataset);
+    g.cfg.confRev = j.value("confRev", g.cfg.confRev);
     if (j.contains("goose") && j["goose"].is_object()) {
       const auto &jg = j["goose"];
       g.cfg.goose.localIP    = jg.value("localIP",    g.cfg.goose.localIP);

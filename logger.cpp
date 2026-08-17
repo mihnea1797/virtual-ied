@@ -12,7 +12,7 @@ void Logger::open(Clock::time_point t)
   std::tm tm_buf;
   gmtime_r(&tt, &tm_buf);
   char fname[64];
-  std::strftime(fname, sizeof(fname), "sv_goose_%Y%m%d_%H%M%S.csv", &tm_buf);
+  std::strftime(fname, sizeof(fname), "loggerOutput/sv_goose_%Y%m%d_%H%M%S.csv", &tm_buf);
 
   std::lock_guard<std::mutex> lk(mtx);
   tStart = t;
