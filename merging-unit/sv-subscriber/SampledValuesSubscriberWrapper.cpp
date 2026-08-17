@@ -303,6 +303,35 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
 
     const char *svID = SVSubscriber_ASDU_getSvId(asdu);
 
+    // ---- per-stream stats (before any parse; every received ASDU counts) ----
+    {
+        StreamStats &S = params->stats;
+        uint16_t smpCnt = SVSubscriber_ASDU_getSmpCnt(asdu);
+        if (S.received == 0)
+        {
+            S.firstArr = sampleTimeStamp;
+            if (svID) params->svID = svID;
+        }
+        S.received++;
+        if (S.lastSmpCnt >= 0)
+        {
+            // uint16 delta absorbs the smpCnt wrap; a small gap = loss, a huge jump = wrap/resync
+            uint16_t delta = static_cast<uint16_t>(smpCnt - static_cast<uint16_t>(S.lastSmpCnt));
+            if (delta == 0)                     S.duplicates++;
+            else if (delta > 1 && delta < 8000) S.lost += (delta - 1);
+        }
+        S.lastSmpCnt = smpCnt;
+        if (S.haveLastArr)
+        {
+            double gapMs = std::chrono::duration<double, std::milli>(sampleTimeStamp - S.lastArr).count();
+            S.jitterSumMs += gapMs;
+            S.jitterN++;
+            if (gapMs > S.jitterMaxMs) S.jitterMaxMs = gapMs;
+        }
+        S.lastArr = sampleTimeStamp;
+        S.haveLastArr = true;
+    }
+
     std::vector<int32_t> voltageMeasurements;
     std::vector<int32_t> currentMeasurements;
 
@@ -328,7 +357,7 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
 
                 if (params->goosePublishMessageFunction)
                 {
-                    printf("Checking voltage RMS value for phase %d : %.2lf\n", index + 1, rms);
+                    // per-sample RMS print removed (16k/s flood); see PrintStats() for stream health
                     if (rms > params->voltageThreshold)
                     {
                         params->goosePublishMessageFunction(true);
@@ -360,7 +389,7 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
 
                 if (params->goosePublishMessageFunction)
                 {
-                    printf("Checking current RMS value for phase %d : %.2lf\n", index + 1, rms);
+                    // per-sample RMS print removed (16k/s flood); see PrintStats() for stream health
                     if (rms > params->currentThreshold)
                     {
                         params->goosePublishMessageFunction(true);
@@ -403,6 +432,36 @@ void SampledValuesSubscriberWrapper::Print()
         }
         outputFile.close();
     }
+}
+
+// Per-stream health snapshot to stdout. 'rate' is windowed (samples since last call),
+// so it drops to 0 if a stream stalls — the liveness signal a run can gate on.
+void SampledValuesSubscriberWrapper::PrintStats()
+{
+    auto now = std::chrono::steady_clock::now();
+    printf("---- R-SV per-stream stats ----\n");
+    for (auto &p : _listenerParams)
+    {
+        StreamStats &S = p->stats;
+        double winRate = 0.0;
+        if (S.lastPrintTime.time_since_epoch().count() != 0)
+        {
+            double dt = std::chrono::duration<double>(now - S.lastPrintTime).count();
+            if (dt > 0.0) winRate = static_cast<double>(S.received - S.lastPrintReceived) / dt;
+        }
+        S.lastPrintReceived = S.received;
+        S.lastPrintTime = now;
+
+        double jmean = (S.jitterN > 0) ? (S.jitterSumMs / static_cast<double>(S.jitterN)) : 0.0;
+        uint64_t expected = S.received + S.lost;
+        double lossPct = (expected > 0) ? 100.0 * static_cast<double>(S.lost) / static_cast<double>(expected) : 0.0;
+        printf("  appId=0x%04X svID=%-8s rx=%llu rate=%.0f sa/s loss=%llu(%.2f%%) dup=%llu jit mean=%.3fms max=%.3fms\n",
+               p->appId, p->svID.c_str(),
+               static_cast<unsigned long long>(S.received), winRate,
+               static_cast<unsigned long long>(S.lost), lossPct,
+               static_cast<unsigned long long>(S.duplicates), jmean, S.jitterMaxMs);
+    }
+    fflush(stdout);
 }
 
 void SampledValuesSubscriberWrapper::ParseReceiverSettings(const nlohmann::json &receiverSettings)

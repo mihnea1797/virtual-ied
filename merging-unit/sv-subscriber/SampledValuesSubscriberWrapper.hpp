@@ -9,6 +9,8 @@ extern "C"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <vector>
+#include <chrono>
+#include <cstdint>
 #include "RmsComputationObject.hpp"
 #include "ButterworthFilter.hpp"
 #include "FrequencyTracking.hpp"
@@ -46,6 +48,24 @@ struct StreamState
     uint8_t    numberOfPhases = 4;
 };
 
+// Per-stream reception stats — updated in the SV listener callback, one per appId.
+struct StreamStats
+{
+    uint64_t received    = 0;
+    uint64_t lost        = 0;  // samples skipped, inferred from smpCnt gaps
+    uint64_t duplicates  = 0;
+    int32_t  lastSmpCnt  = -1;
+    bool     haveLastArr = false;
+    std::chrono::steady_clock::time_point firstArr{};
+    std::chrono::steady_clock::time_point lastArr{};
+    double   jitterSumMs = 0.0; // sum of inter-arrival gaps (for mean)
+    double   jitterMaxMs = 0.0; // worst inter-arrival gap seen
+    uint64_t jitterN     = 0;
+    // windowing for a live (per-print) rate, used as the liveness signal
+    uint64_t lastPrintReceived = 0;
+    std::chrono::steady_clock::time_point lastPrintTime{};
+};
+
 struct ListenerParameters
 {
     uint16_t appId;
@@ -54,6 +74,8 @@ struct ListenerParameters
     std::function<void(bool)> goosePublishMessageFunction; // owned; heap-stable via unique_ptr
     StreamState state;
     pqxx::connection *dbConn = nullptr;                   // non-owning
+    std::string svID;                                    // captured from first ASDU
+    StreamStats stats;
 };
 
 class SampledValuesSubscriberWrapper
@@ -91,4 +113,5 @@ public:
 
     void Start();
     void Print();
+    void PrintStats(); // per-stream rx/rate/loss/jitter snapshot (call periodically)
 };

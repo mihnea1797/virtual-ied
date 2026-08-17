@@ -5,6 +5,8 @@
 #include <memory>
 #include <iostream>
 #include <fstream>
+#include <thread>
+#include <chrono>
 #include <nlohmann/json.hpp>
 
 int main()
@@ -54,7 +56,8 @@ int main()
 
     while (true)
     {
-        // do nothing
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        svSubscriber->PrintStats(); // per-stream rx/rate/loss/jitter (liveness)
     }
 
     return 0;

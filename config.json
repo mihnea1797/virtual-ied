@@ -10,7 +10,7 @@
       "confRev": 200,
       "ndsCom": false,
       "rSessionSettings": {
-        "remoteAddress": "10.10.40.2",
+        "remoteAddress": "10.10.40.1",
         "remotePort": 102,
         "localAddress": "",
         "localPort": -1,
