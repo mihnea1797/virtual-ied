@@ -180,17 +180,26 @@ void goose_sniffer(Config cfg)
   GooseSubscriber_setListener(subscriber, rgoose_listener_cb, nullptr);
   GooseReceiver_addSubscriber(receiver, subscriber);
 
-  // GooseReceiver_start calls RSession_start internally; do NOT call it here
+  // GooseReceiver_start calls RSession_start internally; do NOT call it here.
+  // Retry the start: on a /stop -> /start rearm the previous sniffer instance may not
+  // have released UDP :102 yet, and a single failed bind would otherwise silently kill
+  // GOOSE reception (and t_trip) for the whole run.
   GooseReceiver_start(receiver);
+  for (int tries = 0; !GooseReceiver_isRunning(receiver) && g.running.load() && tries < 30; ++tries)
+  {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    GooseReceiver_start(receiver);
+  }
 
   if (!GooseReceiver_isRunning(receiver))
   {
-    std::cerr << "R-GOOSE receiver failed to start\n";
+    std::cerr << "R-GOOSE receiver failed to start (after retries)\n";
     GooseReceiver_destroy(receiver); // also destroys subscriber
     RSession_stop(rxSession);
     RSession_destroy(rxSession);
     return;
   }
+  std::cout << "[R-GOOSE] receiver listening on " << cfg.goose.localIP << ':' << cfg.goose.localPort << '\n';
 
   while (g.running.load())
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -256,6 +265,11 @@ void sv_publisher_run(Config cfg)
   }
   int rTsIdx = SVPublisher_ASDU_addTimestamp(rAsdu);
 
+  // RefrTm (9-2 header field, wall-clock ms) lets the subscriber compute one-way
+  // delay per sample: OWD = arrival_walltime - RefrTm. Pub/sub containers share the
+  // host kernel clock, so this is a true one-way measurement, not RTT/2.
+  SVPublisher_ASDU_enableRefrTm(rAsdu);
+
   SVPublisher_setupComplete(rPub);
   RSession_start(rSession);
   std::cout << "[R-SV] publishing appId=0x" << std::hex << cfg.appId << std::dec
@@ -313,8 +327,10 @@ void sv_publisher_run(Config cfg)
 
     Timestamp rTs_val;
     Timestamp_clearFlags(&rTs_val);
-    Timestamp_setTimeInMilliseconds(&rTs_val, Hal_getTimeInMs());
+    uint64_t nowMs = Hal_getTimeInMs();
+    Timestamp_setTimeInMilliseconds(&rTs_val, nowMs);
     SVPublisher_ASDU_setTimestamp(rAsdu, rTsIdx, rTs_val);
+    SVPublisher_ASDU_setRefrTm(rAsdu, nowMs); // for subscriber-side one-way delay
 
     SVPublisher_ASDU_increaseSmpCnt(rAsdu);
     SVPublisher_publish(rPub);
