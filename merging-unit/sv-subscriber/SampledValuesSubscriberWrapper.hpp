@@ -49,6 +49,8 @@ struct StreamState
 };
 
 // Per-stream reception stats — updated in the SV listener callback, one per appId.
+// Counters are cumulative (a reader takes deltas between snapshots); the win* maxima
+// reset at every PrintStats() call, so a reader takes max() over the windows it spans.
 struct StreamStats
 {
     uint64_t received    = 0;
@@ -59,8 +61,16 @@ struct StreamStats
     std::chrono::steady_clock::time_point firstArr{};
     std::chrono::steady_clock::time_point lastArr{};
     double   jitterSumMs = 0.0; // sum of inter-arrival gaps (for mean)
-    double   jitterMaxMs = 0.0; // worst inter-arrival gap seen
+    double   jitterMaxMs = 0.0; // worst inter-arrival gap seen (since start)
     uint64_t jitterN     = 0;
+    uint64_t stalls5ms   = 0;  // inter-arrival gaps > 5 ms (delivery stall)
+    uint64_t dark16ms    = 0;  // inter-arrival gaps > 16 ms ("network darkness")
+    // one-way delay: arrival wall-clock minus the publisher's RefrTm stamp (shared host clock)
+    double   owdSumMs    = 0.0;
+    uint64_t owdN        = 0;
+    // per-print-window maxima (reset each PrintStats)
+    double   winJitterMaxMs = 0.0;
+    double   winOwdMaxMs    = 0.0;
     // windowing for a live (per-print) rate, used as the liveness signal
     uint64_t lastPrintReceived = 0;
     std::chrono::steady_clock::time_point lastPrintTime{};

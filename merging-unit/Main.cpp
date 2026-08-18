@@ -39,25 +39,33 @@ int main()
 
     std::unique_ptr<GoosePublisherWrapper> goosePublisher = std::make_unique<GoosePublisherWrapper>(gooseSettings);
 
-    // One receiver for the shared interface / R-SV session; streams are demultiplexed by appId
-    std::unique_ptr<SampledValuesSubscriberWrapper> svSubscriber =
-        std::make_unique<SampledValuesSubscriberWrapper>(sampledValuesSettingsArray[0]);
-    svSubscriber->setPostgresConnection(postgresSqlProperties);
-
+    // One receiver (own RSession/UDP port/receive thread) PER merging unit, standard
+    // R-session-per-MU-pair practice. This is also the performance-critical choice: a
+    // single receiver thread decrypting AES-GCM for all MUs on one socket saturates at
+    // ~7000 pkt/s — two 4000 sa/s streams overflow it (~12% loss, ~20 ms queueing).
+    // Per-MU receivers decrypt in parallel; give each MU its own rSessionSettings.port.
+    std::vector<std::unique_ptr<SampledValuesSubscriberWrapper>> svSubscribers;
     for (const auto &streamConfig : sampledValuesSettingsArray)
     {
-        svSubscriber->addStream(streamConfig, [&goosePublisher](bool value)
-                                { goosePublisher->PublishMessage(value); });
+        auto sub = std::make_unique<SampledValuesSubscriberWrapper>(streamConfig);
+        sub->setPostgresConnection(postgresSqlProperties);
+        sub->addStream(streamConfig, [&goosePublisher](bool value)
+                       { goosePublisher->PublishMessage(value); });
+        svSubscribers.push_back(std::move(sub));
     }
 
     goosePublisher->Print();
-    svSubscriber->Print();
-    svSubscriber->Start();
+    for (auto &sub : svSubscribers)
+    {
+        sub->Print();
+        sub->Start();
+    }
 
     while (true)
     {
         std::this_thread::sleep_for(std::chrono::seconds(2));
-        svSubscriber->PrintStats(); // per-stream rx/rate/loss/jitter (liveness)
+        for (auto &sub : svSubscribers)
+            sub->PrintStats(); // per-stream rx/rate/loss/jitter/OWD (liveness)
     }
 
     return 0;

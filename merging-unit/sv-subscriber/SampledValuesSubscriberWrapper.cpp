@@ -326,10 +326,31 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
             double gapMs = std::chrono::duration<double, std::milli>(sampleTimeStamp - S.lastArr).count();
             S.jitterSumMs += gapMs;
             S.jitterN++;
-            if (gapMs > S.jitterMaxMs) S.jitterMaxMs = gapMs;
+            if (gapMs > S.jitterMaxMs)    S.jitterMaxMs = gapMs;
+            if (gapMs > S.winJitterMaxMs) S.winJitterMaxMs = gapMs;
+            if (gapMs > 5.0)  S.stalls5ms++;
+            if (gapMs > 16.0) S.dark16ms++;   // network-darkness bound (protection blind)
         }
         S.lastArr = sampleTimeStamp;
         S.haveLastArr = true;
+
+        // One-way delay from the publisher's RefrTm stamp (wall clock, shared host kernel).
+        if (SVSubscriber_ASDU_hasRefrTm(asdu))
+        {
+            uint64_t refrMs = SVSubscriber_ASDU_getRefrTmAsMs(asdu);
+            if (refrMs > 0)
+            {
+                auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count();
+                double owd = static_cast<double>(nowMs) - static_cast<double>(refrMs);
+                if (owd >= 0.0 && owd < 10000.0) // discard clock nonsense
+                {
+                    S.owdSumMs += owd;
+                    S.owdN++;
+                    if (owd > S.winOwdMaxMs) S.winOwdMaxMs = owd;
+                }
+            }
+        }
     }
 
     std::vector<int32_t> voltageMeasurements;
@@ -337,6 +358,13 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
 
     if (parseSVData(voltageMeasurements, currentMeasurements, asdu, params->state.format))
     {
+        // Aggregate the threshold STATE across all phases of this ASDU and report it
+        // once per sample (below). The debounced GOOSE publisher turns the state stream
+        // into change-only transitions (true->false->true across runs). Publishing only
+        // on breach latched the publisher's last value to 'true' forever, so a re-armed
+        // run's breach was a true->true no-op and no GOOSE was ever sent again.
+        bool anyAboveThreshold = false;
+
         if (params->state.format != DataFormat::onlyI)
         {
             if (voltageMeasurements.size() < params->state.numberOfPhases)
@@ -355,14 +383,8 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                     storeRMSinDatabase(*params->dbConn, params->appId, index, rms, "V");
                 }
 
-                if (params->goosePublishMessageFunction)
-                {
-                    // per-sample RMS print removed (16k/s flood); see PrintStats() for stream health
-                    if (rms > params->voltageThreshold)
-                    {
-                        params->goosePublishMessageFunction(true);
-                    }
-                }
+                if (rms > params->voltageThreshold)
+                    anyAboveThreshold = true;
 
                 // double estimatedFrequency = params->state.voltageFrequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
                 // double estimatedFrequency = params->state.voltageFrequencyTracker[index].frequencyEstimation(voltageMeasurements[index], sampleTimeStamp);
@@ -387,19 +409,18 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                     storeRMSinDatabase(*params->dbConn, params->appId, index, rms, "C");
                 }
 
-                if (params->goosePublishMessageFunction)
-                {
-                    // per-sample RMS print removed (16k/s flood); see PrintStats() for stream health
-                    if (rms > params->currentThreshold)
-                    {
-                        params->goosePublishMessageFunction(true);
-                    }
-                }
+                if (rms > params->currentThreshold)
+                    anyAboveThreshold = true;
 
                 // double estimatedFrequency = params->state.currentFrequencyTracker[index].frequencyEstimation(filteredValue, sampleTimeStamp);
                 // double estimatedFrequency = params->state.currentFrequencyTracker[index].frequencyEstimation(currentMeasurements[index], sampleTimeStamp);
             }
         }
+
+        // Report the aggregated threshold state once per sample; the publisher's
+        // state-change debounce turns this into transition-only GOOSE.
+        if (params->goosePublishMessageFunction)
+            params->goosePublishMessageFunction(anyAboveThreshold);
     }
 }
 
@@ -434,11 +455,19 @@ void SampledValuesSubscriberWrapper::Print()
     }
 }
 
-// Per-stream health snapshot to stdout. 'rate' is windowed (samples since last call),
-// so it drops to 0 if a stream stalls — the liveness signal a run can gate on.
+// Per-stream health snapshot. 'rate' is windowed (samples since last call), so it drops
+// to 0 if a stream stalls — the liveness signal a run can gate on. Besides the human
+// stdout line, each snapshot appends one JSON line per stream to /tmp/mu-stats.jsonl:
+// cumulative counters (reader takes deltas between snapshots) plus window maxima
+// win_jmax/win_owdmax (reset here each call; reader takes max over spanned windows).
 void SampledValuesSubscriberWrapper::PrintStats()
 {
     auto now = std::chrono::steady_clock::now();
+    auto epochMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+
+    std::ofstream jsonl("/tmp/mu-stats.jsonl", std::ios::app);
+
     printf("---- R-SV per-stream stats ----\n");
     for (auto &p : _listenerParams)
     {
@@ -453,13 +482,42 @@ void SampledValuesSubscriberWrapper::PrintStats()
         S.lastPrintTime = now;
 
         double jmean = (S.jitterN > 0) ? (S.jitterSumMs / static_cast<double>(S.jitterN)) : 0.0;
+        double owdMean = (S.owdN > 0) ? (S.owdSumMs / static_cast<double>(S.owdN)) : 0.0;
         uint64_t expected = S.received + S.lost;
         double lossPct = (expected > 0) ? 100.0 * static_cast<double>(S.lost) / static_cast<double>(expected) : 0.0;
-        printf("  appId=0x%04X svID=%-8s rx=%llu rate=%.0f sa/s loss=%llu(%.2f%%) dup=%llu jit mean=%.3fms max=%.3fms\n",
+
+        printf("  appId=0x%04X svID=%-8s rx=%llu rate=%.0f sa/s loss=%llu(%.2f%%) dup=%llu "
+               "jit mean=%.3fms max=%.3fms stalls>5ms=%llu dark>16ms=%llu owd mean=%.1fms winmax=%.1fms\n",
                p->appId, p->svID.c_str(),
                static_cast<unsigned long long>(S.received), winRate,
                static_cast<unsigned long long>(S.lost), lossPct,
-               static_cast<unsigned long long>(S.duplicates), jmean, S.jitterMaxMs);
+               static_cast<unsigned long long>(S.duplicates), jmean, S.jitterMaxMs,
+               static_cast<unsigned long long>(S.stalls5ms),
+               static_cast<unsigned long long>(S.dark16ms), owdMean, S.winOwdMaxMs);
+
+        if (jsonl.is_open())
+        {
+            jsonl << "{\"ts_ms\":" << epochMs
+                  << ",\"appid\":" << p->appId
+                  << ",\"svid\":\"" << p->svID << "\""
+                  << ",\"rx\":" << S.received
+                  << ",\"rate\":" << winRate
+                  << ",\"lost\":" << S.lost
+                  << ",\"dup\":" << S.duplicates
+                  << ",\"jit_sum_ms\":" << S.jitterSumMs
+                  << ",\"jit_n\":" << S.jitterN
+                  << ",\"win_jmax_ms\":" << S.winJitterMaxMs
+                  << ",\"stalls_5ms\":" << S.stalls5ms
+                  << ",\"dark_16ms\":" << S.dark16ms
+                  << ",\"owd_sum_ms\":" << S.owdSumMs
+                  << ",\"owd_n\":" << S.owdN
+                  << ",\"win_owdmax_ms\":" << S.winOwdMaxMs
+                  << "}\n";
+        }
+
+        // reset per-window maxima
+        S.winJitterMaxMs = 0.0;
+        S.winOwdMaxMs    = 0.0;
     }
     fflush(stdout);
 }

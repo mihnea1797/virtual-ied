@@ -30,6 +30,8 @@ class GoosePublisherWrapper
 {
 private:
     std::vector<GooseConnection> _connections;
+    bool _lastValue    = false;  // publish on state CHANGE only (stNum semantics);
+    bool _havePublished = false; // the per-sample caller would otherwise emit ~16k GOOSE/s
 
     static GooseConnection createConnection(const nlohmann::json &settings);
 

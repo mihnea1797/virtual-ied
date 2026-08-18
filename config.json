@@ -66,6 +66,46 @@
                 }
             ]
         }
+    },
+    {
+        "muId": "MU3",
+        "appId": 16385,
+        "threshold": 230,
+        "dataFormat": {
+            "measurementOrder": "voltageFirst",
+            "clusteringType": "single",
+            "numberOfPhases": 4
+        },
+        "signalProperties":{
+            "samplesPerPeriod": 80,
+            "scalingConstant": 1000
+        },
+        "filterProperties":{
+            "order": 0,
+            "cutoffFrequency": 200,
+            "samplingFrequency": 4000
+        },
+        "ethernetInterface": "eth1",
+        "dstAddressCheck": false,
+        "rSessionSettings": {
+            "localAddress": "0.0.0.0",
+            "port": 103,
+            "multicastGroups": [],
+            "keys": [
+                {
+                    "id": 1,
+                    "key": "0123456789ABCDEF",
+                    "secAlgo": "AES_128_GCM",
+                    "sigAlgo": "NONE"
+                },
+                {
+                    "id": 2,
+                    "key": "FEDCBA9876543210",
+                    "secAlgo": "AES_128_GCM",
+                    "sigAlgo": "NONE"
+                }
+            ]
+        }
     }
   ],
   "postgresSql": {

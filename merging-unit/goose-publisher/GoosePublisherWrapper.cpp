@@ -90,6 +90,15 @@ GoosePublisherWrapper::~GoosePublisherWrapper()
 
 void GoosePublisherWrapper::PublishMessage(bool value)
 {
+    // State-change debounce: the SV listener calls this per sample per phase (~16k/s
+    // above threshold). GOOSE stNum semantics = increment on data CHANGE; publish only
+    // transitions. (Retransmission schedule is out of scope for the latency use case —
+    // the subscriber times the FIRST GOOSE after the event.)
+    if (_havePublished && value == _lastValue)
+        return;
+    _lastValue = value;
+    _havePublished = true;
+
     LinkedList dataSetValues = LinkedList_create();
     LinkedList_add(dataSetValues, MmsValue_newBoolean(value));
     LinkedList_add(dataSetValues, MmsValue_newBitString(23));
