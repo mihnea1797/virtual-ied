@@ -79,7 +79,7 @@ topology:
     vied:                       # [ABSTRACT] R-SV subscriber + latency harness + iperf3 -s
       kind: linux
       image: dev-container:latest
-      binds: ["/home/mihnea/virtual-merging-unit:/root/virtual-merging-unit"]
+      binds: ["/home/mihnea/virtual-ied:/root/virtual-merging-unit"]
       cmd: sleep infinity
       exec:
         - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump tshark"
