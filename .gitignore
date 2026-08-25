@@ -1,1 +1,4 @@
 clab-vied-lab/
+qos_sweep_*.csv
+*.log
+__pycache__/

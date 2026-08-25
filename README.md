@@ -10,3 +10,7 @@ Everything needed to bring up the containerlab testbed for the R-SV QoS work.
 
 Symlinks in ~ point here, so the systemd unit and old habits keep working.
 Manual bring-up after any VM restart: `bash ~/lab-up.sh` (systemd does it automatically).
+
+## Testing
+- `qos_sweep.py`     — the experiment driver: QoS on/off x background load x repetitions; per-stream rate/loss/jitter/darkness/OWD + t_trip; logs link bw + per-hop netem
+- `test-results/`    — kept reference results (fresh runs write CSVs to the working dir, untracked until promoted here)
