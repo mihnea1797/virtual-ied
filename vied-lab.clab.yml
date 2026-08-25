@@ -1,0 +1,101 @@
+name: vied-lab
+topology:
+  nodes:
+    # ===== Substation A: merging units (R-SV publishers) =====
+    vmu1:                       # [ABSTRACT] primary publisher (~2.9 Mbps)
+      kind: linux
+      image: dev-container:latest
+      binds: ["/home/mihnea/iec61850-lab:/home/root/iec61850-lab"]
+      cmd: sleep infinity
+      ports: ["8080:8080"]
+      exec:
+        - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump tshark"
+        - ip addr add 10.10.40.1/24 dev eth1
+        - ip route add 10.10.30.0/24 via 10.10.40.100
+    vmu2:                       # [FULL PAPER]
+      kind: linux
+      image: dev-container:latest
+      binds: ["/home/mihnea/iec61850-lab:/home/root/iec61850-lab"]
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump"
+        - ip addr add 10.10.40.2/24 dev eth1
+        - ip route add 10.10.30.0/24 via 10.10.40.100
+    vmu3:                       # [FULL PAPER]
+      kind: linux
+      image: dev-container:latest
+      binds: ["/home/mihnea/iec61850-lab:/home/root/iec61850-lab"]
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump"
+        - ip addr add 10.10.40.3/24 dev eth1
+        - ip route add 10.10.30.0/24 via 10.10.40.100
+
+    # ===== Background traffic source (substation A) =====
+    load-src:                   # [ABSTRACT] iperf3 client
+      kind: linux
+      image: wbitt/network-multitool:latest
+      exec:
+        - ip addr add 10.10.40.10/24 dev eth1
+        - ip route add 10.10.30.0/24 via 10.10.40.100
+
+    # ===== SDN edge switch: OVS INSIDE a container =====
+    ovs-core:                   # [ABSTRACT] data ports eth1..eth5, NO IPs
+      kind: linux
+      image: dev-container:latest
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y openvswitch-switch openvswitch-common"
+
+    # ===== SDN controller (idle for the abstract) =====
+    controller:                 # [FULL PAPER] Ryu
+      kind: linux
+      image: dev-container:latest
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y python3-pip && pip3 install ryu || true"
+
+    # ===== WAN: 3-hop chain (access = ovs-core, aggregation = router1, core = router2).
+    # Each router hop carries the identical DSCP(EF)->queue mapping + its share of the
+    # propagation delay (wan-qos.sh). Marking happens ONLY at the ovs-core edge.
+    router1:                    # aggregation hop
+      kind: linux
+      image: wbitt/network-multitool:latest
+      exec:
+        - ip addr add 10.10.40.100/24 dev eth1   # to ovs-core uplink (substation A gateway)
+        - ip addr add 10.10.50.1/30 dev eth2     # transit to core
+        - ip route add 10.10.30.0/24 via 10.10.50.2
+        - sysctl -w net.ipv4.ip_forward=1
+    router2:                    # core hop
+      kind: linux
+      image: wbitt/network-multitool:latest
+      exec:
+        - ip addr add 10.10.50.2/30 dev eth1     # transit from aggregation
+        - ip addr add 10.10.30.100/24 dev eth2   # to substation B (vied gateway)
+        - ip route add 10.10.40.0/24 via 10.10.50.1
+        - sysctl -w net.ipv4.ip_forward=1
+
+    # ===== Substation B: subscriber + background sink =====
+    vied:                       # [ABSTRACT] R-SV subscriber + latency harness + iperf3 -s
+      kind: linux
+      image: dev-container:latest
+      binds: ["/home/mihnea/virtual-merging-unit:/root/virtual-merging-unit"]
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump tshark"
+        - ip addr add 10.10.30.1/24 dev eth1
+        - ip route add 10.10.40.0/24 via 10.10.30.100
+
+  links:
+    # Substation A hosts -> OVS (note the ovs-core side interface names: eth1..eth4)
+    - endpoints: ["vmu1:eth1", "ovs-core:eth1"]
+    - endpoints: ["vmu2:eth1", "ovs-core:eth2"]
+    - endpoints: ["vmu3:eth1", "ovs-core:eth3"]
+    - endpoints: ["load-src:eth1", "ovs-core:eth4"]
+    # OVS uplink -> aggregation (ovs-core:eth5 carries the 20M HTB cap + EF/BE queues)
+    - endpoints: ["ovs-core:eth5", "router1:eth1"]
+    # Aggregation -> core (transit). wan-qos.sh puts the same-capacity HTB + EF class
+    # + per-hop netem on each router's eth2, so the PHB is identical on every hop.
+    - endpoints: ["router1:eth2", "router2:eth1"]
+    # Core -> substation B (subscriber)
+    - endpoints: ["router2:eth2", "vied:eth1"]

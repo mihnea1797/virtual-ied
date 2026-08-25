@@ -1,0 +1,18 @@
+# Installed copy lives at /etc/systemd/system/clab-vied-lab.service (enabled).
+# NOTE: keep this source OUT of ~ — `containerlab destroy --cleanup` globs
+# clab-vied-lab* in the topology dir and DELETED the previous ~ copy.
+[Unit]
+Description=Bring up vied-lab (ovs module + veth links + OVS QoS + WAN PHB + subscriber) on boot
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/mihnea/lab-up.sh
+ExecStop=/usr/bin/containerlab destroy -t /home/mihnea/vied-lab.clab.yml
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
