@@ -6,7 +6,7 @@ inline constexpr const char* INDEX_HTML = R"HTML(<!doctype html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SV–GOOSE Latency</title>
+<title>IEC61850-Lab</title>
 <style>
   body{font-family:system-ui,Arial,sans-serif;margin:24px;}
   fieldset{margin-bottom:16px;padding:12px;border-radius:8px;}
@@ -21,7 +21,7 @@ inline constexpr const char* INDEX_HTML = R"HTML(<!doctype html>
 </style>
 </head>
 <body>
-<h2>SV → GOOSE Latency Lab</h2>
+<h2>IEC61850-Lab</h2>
 
 <div class="row">
   <div class="card">
