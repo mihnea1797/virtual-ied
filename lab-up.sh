@@ -12,8 +12,12 @@
 # ============================================================
 set -uo pipefail
 
-TOPO=/home/mihnea/vied-lab.clab.yml
-OVS_RESTORE=/home/mihnea/ovs-restore.sh
+# Everything lives next to this script (the virtual-protections-wan repo),
+# so the repo can move/rename without breaking paths.
+DIR="$(cd "$(dirname "$0")" && pwd)"
+TOPO="$DIR/vied-lab.clab.yml"
+OVS_RESTORE="$DIR/ovs-restore.sh"
+WAN_QOS="$DIR/wan-qos.sh"
 SUB=clab-vied-lab-vied
 PUB=clab-vied-lab-vmu1
 
@@ -27,7 +31,7 @@ echo "[lab-up] 3/5 OVS bridge + 20 Mb/s HTB cap + EF/BE queues + DiffServ edge m
 bash "$OVS_RESTORE"
 
 echo "[lab-up] 3b/5 WAN per-hop PHB (DSCP->EF queue) + propagation delay on router1/router2"
-bash /home/mihnea/wan-qos.sh
+bash "$WAN_QOS"
 
 echo "[lab-up] 4/5 relink subscriber (redeploy wipes /opt; .o's persist on the bind mount)"
 docker exec "$SUB" mkdir -p /opt/virtual-merging-unit
