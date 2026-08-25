@@ -151,7 +151,7 @@ def ping_baseline():
 
 # ----------------------------- publishers -----------------------------
 def pub_alive(cont):
-    r = dx(cont, "ps -eo stat,args | grep '[s]v_goose_latency_web' | grep -v 'bash -lc' | grep -vc '^Z'")
+    r = dx(cont, "ps -eo stat,args | grep '[b]uild/iec61850-lab' | grep -v 'bash -lc' | grep -vc '^Z'")
     try:
         return int(r.stdout.strip())
     except ValueError:
@@ -171,12 +171,12 @@ def pub_ctl(cont, verb):
 
 def publishers_start():
     for p in PUBLISHERS:
-        dx(p["cont"], "pkill -9 -f sv_goose_latency_web || true")
+        dx(p["cont"], "pkill -9 -f build/iec61850-lab || true")
     time.sleep(2)
     # fresh t_trip source: stale harness CSVs must never win the "newest" race
     dx(PUBLISHERS[0]["cont"], f"rm -f {LOGGER_DIR}/sv_goose_*.csv")
     for p in PUBLISHERS:
-        dxd(p["cont"], f"cd {p['cwd']} && {PUB_DIR}/build/sv_goose_latency_web {PUB_DIR}/{p['cfg']} >/dev/null 2>&1")
+        dxd(p["cont"], f"cd {p['cwd']} && {PUB_DIR}/build/iec61850-lab {PUB_DIR}/{p['cfg']} >/dev/null 2>&1")
     time.sleep(3)
 
 def publishers_guard():
