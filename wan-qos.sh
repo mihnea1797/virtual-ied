@@ -7,9 +7,9 @@
 # (ovs-core) marks R-SV with DSCP EF(46); every hop then needs only:
 #
 #   forward egress (eth2, toward vied):
-#     HTB 20 Mb/s (same capacity as the access cap) with two classes:
-#       1:20 EF  min 13M (covers the ~12M R-SV aggregate)  <- filter DSCP 46
-#       1:10 BE  min  7M (default)
+#     HTB 30 Mb/s (same capacity as the access cap) with two classes:
+#       1:20 EF  min 20M (covers the ~18M R-SV aggregate)  <- filter DSCP 46
+#       1:10 BE  min 10M (default)
 #     + netem ${DELAY_MS} under EACH leaf = this hop's propagation delay
 #       (netem can't share root with HTB, so it layers under the classes)
 #   reverse egress (eth1, toward substation A):
@@ -28,14 +28,14 @@ DELAY_MS=2.5
 ROUTERS="clab-vied-lab-router1 clab-vied-lab-router2"
 
 for R in $ROUTERS; do
-  echo "[wan-qos] $R: HTB(20M, EF min 13M by DSCP 46) + netem ${DELAY_MS}ms per direction"
+  echo "[wan-qos] $R: HTB(30M, EF min 20M by DSCP 46) + netem ${DELAY_MS}ms per direction"
   docker exec "$R" sh -c "
     # forward egress: HTB with EF/BE + per-leaf netem
     tc qdisc del dev eth2 root 2>/dev/null || true
     tc qdisc add dev eth2 root handle 1: htb default 10 &&
-    tc class add dev eth2 parent 1:  classid 1:1  htb rate 20mbit ceil 20mbit &&
-    tc class add dev eth2 parent 1:1 classid 1:10 htb rate 7mbit  ceil 20mbit &&
-    tc class add dev eth2 parent 1:1 classid 1:20 htb rate 13mbit ceil 20mbit &&
+    tc class add dev eth2 parent 1:  classid 1:1  htb rate 30mbit ceil 30mbit &&
+    tc class add dev eth2 parent 1:1 classid 1:10 htb rate 10mbit ceil 30mbit &&
+    tc class add dev eth2 parent 1:1 classid 1:20 htb rate 20mbit ceil 30mbit &&
     tc filter add dev eth2 protocol ip parent 1: prio 1 u32 match ip dsfield 0xb8 0xfc flowid 1:20 &&
     tc qdisc add dev eth2 parent 1:10 handle 10: netem delay ${DELAY_MS}ms &&
     tc qdisc add dev eth2 parent 1:20 handle 20: netem delay ${DELAY_MS}ms &&

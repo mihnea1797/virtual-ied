@@ -34,7 +34,7 @@ SUB     = "clab-vied-lab-vied"
 LOAD    = "clab-vied-lab-load-src"
 
 SINK_IP  = "10.10.30.1"
-SV_PORTS = [102, 103]   # one UDP port per merging-unit R-session (parallel decrypt at vIED)
+SV_PORTS = [102, 103, 104]   # one UDP port per merging-unit R-session (parallel decrypt at vIED)
 
 # One R-SV publisher per merging-unit container (multi-stream = multi-container),
 # each on its own R-session port. "cwd" controls where the harness drops its
@@ -48,6 +48,8 @@ PUBLISHERS = [
      "cwd": PUB_DIR},
     {"cont": "clab-vied-lab-vmu2", "cfg": "config-vmu2.json", "ip": "10.10.40.2", "appid": 16385, "port": 103,
      "cwd": "/tmp"},
+    {"cont": "clab-vied-lab-vmu3", "cfg": "config-vmu3.json", "ip": "10.10.40.3", "appid": 16386, "port": 104,
+     "cwd": "/tmp"},
 ]
 LOGGER_DIR = PUB_DIR + "/loggerOutput"      # harness CSVs (t_trip source, vmu1 only)
 MU_BIN     = "/opt/virtual-merging-unit/merging-unit"
@@ -56,9 +58,11 @@ MU_STATS   = "/tmp/mu-stats.jsonl"
 # ----------------------------- experiment -----------------------------
 DUR        = 30          # measured seconds per condition
 SETTLE_S   = 4           # after (re)arming publishers, before the t0 snapshot
-REPS       = 3           # repetitions per condition (small-N runs gave noisy counts)
-# Background loads: cap is 20M, aggregate R-SV ~12M -> offered totals 90/105/120/140% of cap.
-LOADS      = ["6M", "9M", "12M", "16M"]
+REPS       = 10          # repetitions per condition (N=3 was too few for error bars)
+WARMUP     = True        # run one full unrecorded pass first: the first repetition after a
+                         # deploy carries container-settling noise (jmax ~13-25 ms vs ~1-2 ms)
+# Background loads: cap is 30M, aggregate R-SV ~18M -> offered totals 90/105/120/140% of cap.
+LOADS      = ["9M", "13M", "18M", "24M"]
 SV_PPS_MIN, SV_PPS_MAX = 3500, 4500   # per-publisher guard band around 4000 sa/s
 
 STAMP  = time.strftime("%Y%m%d_%H%M%S")
@@ -343,6 +347,12 @@ def main():
     with open(OUTCSV, "w", newline="") as csvf:
         writer = csv.DictWriter(csvf, fieldnames=COLS)
         writer.writeheader()
+        if WARMUP:
+            print("---- warm-up (discarded: post-deploy settling) ----")
+            import io
+            null = csv.DictWriter(io.StringIO(), fieldnames=COLS)
+            run_condition("warmup", "on", "none", 0, null, io.StringIO(), globals_)
+            run_condition("warmup", "off", LOADS[-1], 0, null, io.StringIO(), globals_)
         for rep in range(1, REPS + 1):
             print(f"---- repetition {rep}/{REPS} ----")
             run_condition("baseline", "on", "none", rep, writer, csvf, globals_)

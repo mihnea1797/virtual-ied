@@ -21,14 +21,14 @@ docker exec $OVS bash -c '
 '
 
 # 3. QoS: clear any stale rows, then recreate the WAN cap + two queues on eth5.
-#    20 Mb/s cap sized so the aggregate R-SV (2 streams x ~6 Mb/s = ~12 Mb/s) is
-#    ~60% of the link; q1 (priority, R-SV) min-rate covers that aggregate (12M+1M
+#    30 Mb/s cap sized so the aggregate R-SV (3 streams x ~6 Mb/s = ~18 Mb/s) is
+#    ~60% of the link; q1 (priority, R-SV) min-rate covers that aggregate (18M+2M
 #    headroom), q0 (best-effort) gets the rest. Both may borrow up to the cap.
 docker exec $OVS bash -c '
   ovs-vsctl clear port eth5 qos      || true
   ovs-vsctl --all destroy qos        || true
   ovs-vsctl --all destroy queue      || true
-  ovs-vsctl set port eth5 qos=@newqos -- --id=@newqos create qos type=linux-htb other-config:max-rate=20000000 queues:0=@q0 queues:1=@q1 -- --id=@q0 create queue other-config:min-rate=1000000 other-config:max-rate=20000000 -- --id=@q1 create queue other-config:min-rate=13000000 other-config:max-rate=20000000
+  ovs-vsctl set port eth5 qos=@newqos -- --id=@newqos create qos type=linux-htb other-config:max-rate=30000000 queues:0=@q0 queues:1=@q1 -- --id=@q0 create queue other-config:min-rate=1000000 other-config:max-rate=30000000 -- --id=@q1 create queue other-config:min-rate=20000000 other-config:max-rate=30000000
 '
 
 # 4. DiffServ EF at the edge (default = QoS on; qos_sweep.py toggles per condition).
@@ -40,7 +40,7 @@ docker exec $OVS bash -c '
 #    QoS off (single queue) = delete all ip flows: no mark -> no hop matches EF.
 docker exec $OVS bash -c '
   ovs-ofctl del-flows br0 "ip" || true
-  for p in 102 103; do
+  for p in 102 103 104; do
     ovs-ofctl add-flow br0 "priority=300,udp,tp_dst=$p,actions=mod_nw_tos:184,set_queue:1,NORMAL"
   done
   ovs-ofctl add-flow br0 "priority=100,ip,actions=mod_nw_tos:0,NORMAL"
