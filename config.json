@@ -1,117 +1,157 @@
 {
-  "gooseSettings": [
-    {
-      "appId": 1,
-      "goId": "AA1J4Q15A1LD0/LLN0.RPG",
-      "goCb": "AA1J4Q15A1LD0/LLN0$GO$RPG",
-      "timeAllowedToLive": 20000,
-      "dataSetRef": "AA1J4Q15A1LD0/LLN0$Gss",
-      "simulation": false,
-      "confRev": 200,
-      "ndsCom": false,
-      "rSessionSettings": {
-        "remoteAddress": "10.10.40.1",
-        "remotePort": 102,
-        "localAddress": "",
-        "localPort": -1,
-        "activeKeyId": 1,
-        "keys": [
-          {
-            "id": 1,
-            "key": "0123456789ABCDEF",
-            "secAlgo": "AES_128_GCM",
-            "sigAlgo": "NONE"
-          }
-        ]
-      }
-    }
-  ],
-  "sampledValuesSettings": [
-    {
-        "muId": "MU2",
-        "appId": 16384,
-        "threshold": 230,
-        "dataFormat": {
-            "measurementOrder": "voltageFirst",
-            "clusteringType": "single",
-            "numberOfPhases": 4
-        },
-        "signalProperties":{
-            "samplesPerPeriod": 80,
-            "scalingConstant": 1000
-        },
-        "filterProperties":{
-            "order": 0,
-            "cutoffFrequency": 200,
-            "samplingFrequency": 4000
-        },
-        "ethernetInterface": "eth1",
-        "dstAddressCheck": false,
-        "rSessionSettings": {
-            "localAddress": "0.0.0.0",
-            "port": 102,
-            "multicastGroups": [],
-            "keys": [
-                {
-                    "id": 1,
-                    "key": "0123456789ABCDEF",
-                    "secAlgo": "AES_128_GCM",
-                    "sigAlgo": "NONE"
-                },
-                {
-                    "id": 2,
-                    "key": "FEDCBA9876543210",
-                    "secAlgo": "AES_128_GCM",
-                    "sigAlgo": "NONE"
-                }
-            ]
+    "gooseSettings": [
+        {
+            "appId": 1,
+            "goId": "AA1J4Q15A1LD0/LLN0.RPG",
+            "goCb": "AA1J4Q15A1LD0/LLN0$GO$RPG",
+            "timeAllowedToLive": 20000,
+            "dataSetRef": "AA1J4Q15A1LD0/LLN0$Gss",
+            "simulation": false,
+            "confRev": 200,
+            "ndsCom": false,
+            "rSessionSettings": {
+                "remoteAddress": "10.10.40.1",
+                "remotePort": 102,
+                "localAddress": "",
+                "localPort": -1,
+                "activeKeyId": 1,
+                "keys": [
+                    {
+                        "id": 1,
+                        "key": "0123456789ABCDEF",
+                        "secAlgo": "AES_128_GCM",
+                        "sigAlgo": "NONE"
+                    }
+                ]
+            }
         }
-    },
-    {
-        "muId": "MU3",
-        "appId": 16385,
-        "threshold": 230,
-        "dataFormat": {
-            "measurementOrder": "voltageFirst",
-            "clusteringType": "single",
-            "numberOfPhases": 4
+    ],
+    "sampledValuesSettings": [
+        {
+            "muId": "MU2",
+            "appId": 16384,
+            "threshold": 230,
+            "dataFormat": {
+                "measurementOrder": "voltageFirst",
+                "clusteringType": "single",
+                "numberOfPhases": 4
+            },
+            "signalProperties": {
+                "samplesPerPeriod": 80,
+                "scalingConstant": 1000
+            },
+            "filterProperties": {
+                "order": 0,
+                "cutoffFrequency": 200,
+                "samplingFrequency": 4000
+            },
+            "ethernetInterface": "eth1",
+            "dstAddressCheck": false,
+            "rSessionSettings": {
+                "localAddress": "0.0.0.0",
+                "port": 102,
+                "multicastGroups": [],
+                "keys": [
+                    {
+                        "id": 1,
+                        "key": "0123456789ABCDEF",
+                        "secAlgo": "AES_128_GCM",
+                        "sigAlgo": "NONE"
+                    },
+                    {
+                        "id": 2,
+                        "key": "FEDCBA9876543210",
+                        "secAlgo": "AES_128_GCM",
+                        "sigAlgo": "NONE"
+                    }
+                ]
+            }
         },
-        "signalProperties":{
-            "samplesPerPeriod": 80,
-            "scalingConstant": 1000
+        {
+            "muId": "MU3",
+            "appId": 16385,
+            "threshold": 230,
+            "dataFormat": {
+                "measurementOrder": "voltageFirst",
+                "clusteringType": "single",
+                "numberOfPhases": 4
+            },
+            "signalProperties": {
+                "samplesPerPeriod": 80,
+                "scalingConstant": 1000
+            },
+            "filterProperties": {
+                "order": 0,
+                "cutoffFrequency": 200,
+                "samplingFrequency": 4000
+            },
+            "ethernetInterface": "eth1",
+            "dstAddressCheck": false,
+            "rSessionSettings": {
+                "localAddress": "0.0.0.0",
+                "port": 103,
+                "multicastGroups": [],
+                "keys": [
+                    {
+                        "id": 1,
+                        "key": "0123456789ABCDEF",
+                        "secAlgo": "AES_128_GCM",
+                        "sigAlgo": "NONE"
+                    },
+                    {
+                        "id": 2,
+                        "key": "FEDCBA9876543210",
+                        "secAlgo": "AES_128_GCM",
+                        "sigAlgo": "NONE"
+                    }
+                ]
+            }
         },
-        "filterProperties":{
-            "order": 0,
-            "cutoffFrequency": 200,
-            "samplingFrequency": 4000
-        },
-        "ethernetInterface": "eth1",
-        "dstAddressCheck": false,
-        "rSessionSettings": {
-            "localAddress": "0.0.0.0",
-            "port": 103,
-            "multicastGroups": [],
-            "keys": [
-                {
-                    "id": 1,
-                    "key": "0123456789ABCDEF",
-                    "secAlgo": "AES_128_GCM",
-                    "sigAlgo": "NONE"
-                },
-                {
-                    "id": 2,
-                    "key": "FEDCBA9876543210",
-                    "secAlgo": "AES_128_GCM",
-                    "sigAlgo": "NONE"
-                }
-            ]
+        {
+            "muId": "MU4",
+            "appId": 16386,
+            "threshold": 230,
+            "dataFormat": {
+                "measurementOrder": "voltageFirst",
+                "clusteringType": "single",
+                "numberOfPhases": 4
+            },
+            "signalProperties": {
+                "samplesPerPeriod": 80,
+                "scalingConstant": 1000
+            },
+            "filterProperties": {
+                "order": 0,
+                "cutoffFrequency": 200,
+                "samplingFrequency": 4000
+            },
+            "ethernetInterface": "eth1",
+            "dstAddressCheck": false,
+            "rSessionSettings": {
+                "localAddress": "0.0.0.0",
+                "port": 104,
+                "multicastGroups": [],
+                "keys": [
+                    {
+                        "id": 1,
+                        "key": "0123456789ABCDEF",
+                        "secAlgo": "AES_128_GCM",
+                        "sigAlgo": "NONE"
+                    },
+                    {
+                        "id": 2,
+                        "key": "FEDCBA9876543210",
+                        "secAlgo": "AES_128_GCM",
+                        "sigAlgo": "NONE"
+                    }
+                ]
+            }
         }
+    ],
+    "postgresSql": {
+        "dbname": "merging_unit",
+        "user": "postgres",
+        "password": "postgres",
+        "hostaddr": "127.0.0.1"
     }
-  ],
-  "postgresSql": {
-    "dbname": "merging_unit",
-    "user": "postgres",
-    "password": "postgres",
-    "hostaddr": "127.0.0.1"
-  }
 }
