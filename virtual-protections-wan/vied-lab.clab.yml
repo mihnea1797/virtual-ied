@@ -5,7 +5,7 @@ topology:
     vmu1:                       # [ABSTRACT] primary publisher (~2.9 Mbps)
       kind: linux
       image: dev-container:latest
-      binds: ["/home/mihnea/iec61850-lab:/home/root/iec61850-lab"]
+      binds: ["/home/mihnea/virtual-ied/iec61850-lab:/home/root/iec61850-lab"]
       cmd: sleep infinity
       ports: ["8080:8080"]
       exec:
@@ -15,7 +15,7 @@ topology:
     vmu2:                       # [FULL PAPER]
       kind: linux
       image: dev-container:latest
-      binds: ["/home/mihnea/iec61850-lab:/home/root/iec61850-lab"]
+      binds: ["/home/mihnea/virtual-ied/iec61850-lab:/home/root/iec61850-lab"]
       cmd: sleep infinity
       exec:
         - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump"
@@ -24,7 +24,7 @@ topology:
     vmu3:                       # [FULL PAPER]
       kind: linux
       image: dev-container:latest
-      binds: ["/home/mihnea/iec61850-lab:/home/root/iec61850-lab"]
+      binds: ["/home/mihnea/virtual-ied/iec61850-lab:/home/root/iec61850-lab"]
       cmd: sleep infinity
       exec:
         - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump"

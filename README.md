@@ -4,6 +4,19 @@ IEC 61850 virtual merging unit: subscribes to Sampled Values (rSV/SV) on an
 Ethernet interface, computes RMS values, and publishes GOOSE / rGOOSE messages.
 Built on [libiec61850](https://github.com/mz-automation/libiec61850).
 
+## Repository layout
+
+- `/` (this README, `merging-unit/`, `CMakeLists.txt`, `config.json`): the virtual IED, the R-SV subscriber
+  that returns the R-GOOSE trip. Built inside the `clab-vied-lab-vied` container (see below).
+- `iec61850-lab/`: the virtual merging unit, the R-SV publisher with the step/trip harness, one process per
+  stream in the `vmu*` containers. Own CMake build and its own `dependencies/libiec61850` pin.
+- `virtual-protections-wan/`: the testbed (containerlab topology, OVS/WAN QoS scripts, systemd unit), the
+  experiment driver `qos_sweep.py`, analysis scripts, results and figures.
+- `patches/`: the local libiec61850 commits of both submodules as `git am` patches (neither is upstream).
+
+Merged from three repositories on 2026-10-31 with their histories (`git subtree add`); the host paths
+`~/iec61850-lab` and `~/virtual-protections-wan` are symlinks into this tree.
+
 ## Building & Running in the containerlab container
 
 **Context:** the lab runs in a `dev-container:latest` containerlab node with this

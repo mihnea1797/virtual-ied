@@ -1,3 +1,6 @@
 [submodule "dependencies/libiec61850"]
 	path = dependencies/libiec61850
 	url = https://github.com/mz-automation/libiec61850.git
+[submodule "iec61850-lab/dependencies/libiec61850"]
+	path = iec61850-lab/dependencies/libiec61850
+	url = https://github.com/mz-automation/libiec61850.git

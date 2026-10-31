@@ -8,7 +8,8 @@ Everything needed to bring up the containerlab testbed for the R-SV QoS work.
 - `wan-qos.sh`         — per-hop DSCP->EF queue + 2.5 ms netem on the WAN routers
 - `clab-vied-lab.service` — source of the installed systemd unit (/etc/systemd/system)
 
-Symlinks in ~ point here, so the systemd unit and old habits keep working.
+This directory lives in the virtual-ied monorepo; `~/virtual-protections-wan` and `~/iec61850-lab` are
+symlinks into it, so the installed systemd unit and old habits keep working.
 Manual bring-up after any VM restart: `bash ~/lab-up.sh` (systemd does it automatically).
 
 ## Testing

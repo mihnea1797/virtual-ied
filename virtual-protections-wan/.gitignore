@@ -1,5 +1,5 @@
 clab-vied-lab/
-qos_sweep_*.csv
+/qos_sweep_*.csv
 *.log
 __pycache__/
 .venv/

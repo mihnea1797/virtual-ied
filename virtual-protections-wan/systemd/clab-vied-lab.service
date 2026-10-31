@@ -11,8 +11,8 @@ Requires=docker.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/home/mihnea/virtual-protections-wan/lab-up.sh
-ExecStop=/usr/bin/containerlab destroy -t /home/mihnea/virtual-protections-wan/vied-lab.clab.yml
+ExecStart=/home/mihnea/virtual-ied/virtual-protections-wan/lab-up.sh
+ExecStop=/usr/bin/containerlab destroy -t /home/mihnea/virtual-ied/virtual-protections-wan/vied-lab.clab.yml
 TimeoutStartSec=600
 
 [Install]
