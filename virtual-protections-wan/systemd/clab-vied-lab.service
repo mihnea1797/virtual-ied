@@ -1,0 +1,19 @@
+# Source of the installed unit: /etc/systemd/system/clab-vied-lab.service
+# After editing: sudo cp systemd/clab-vied-lab.service /etc/systemd/system/ && sudo systemctl daemon-reload
+# (Kept in systemd/ because `containerlab destroy --cleanup` globs clab-vied-lab*
+#  next to the topology file and would delete it from the repo root.)
+[Unit]
+Description=Bring up vied-lab (ovs module + veth links + OVS QoS + WAN PHB + subscriber) on boot
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/mihnea/virtual-protections-wan/lab-up.sh
+ExecStop=/usr/bin/containerlab destroy -t /home/mihnea/virtual-protections-wan/vied-lab.clab.yml
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
