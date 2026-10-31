@@ -88,8 +88,20 @@ GoosePublisherWrapper::~GoosePublisherWrapper()
     }
 }
 
-void GoosePublisherWrapper::PublishMessage(bool value)
+void GoosePublisherWrapper::PublishMessage(uint16_t appId, bool value)
 {
+    std::lock_guard<std::mutex> lk(_lock);
+    // Per-stream state, aggregated with OR: the trip is asserted while ANY subscribed stream
+    // is above threshold and released when none is. Debouncing the last caller's value
+    // instead made two streams in different states (one tripped, one not) toggle the
+    // aggregate on every received ASDU — an R-GOOSE storm of thousands of stNum
+    // increments per second (seen with non-stepping load streams in the boundary sweep).
+    _streamAbove[appId] = value;
+    bool any = false;
+    for (const auto &kv : _streamAbove)
+        any = any || kv.second;
+    value = any;
+
     // State-change debounce: the SV listener calls this per sample per phase (~16k/s
     // above threshold). GOOSE stNum semantics = increment on data CHANGE; publish only
     // transitions. (Retransmission schedule is out of scope for the latency use case —

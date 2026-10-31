@@ -81,7 +81,7 @@ struct ListenerParameters
     uint16_t appId;
     double voltageThreshold;
     double currentThreshold;
-    std::function<void(bool)> goosePublishMessageFunction; // owned; heap-stable via unique_ptr
+    std::function<void(uint16_t, bool)> goosePublishMessageFunction; // (appId, above); owned; heap-stable via unique_ptr
     StreamState state;
     pqxx::connection *dbConn = nullptr;                   // non-owning
     std::string svID;                                    // captured from first ASDU
@@ -117,7 +117,7 @@ public:
     ~SampledValuesSubscriberWrapper();
 
     // Add one data stream: creates an SVSubscriber for the given appId and registers its listener
-    void addStream(const nlohmann::json &streamConfig, std::function<void(bool)> publishFn);
+    void addStream(const nlohmann::json &streamConfig, std::function<void(uint16_t, bool)> publishFn);
 
     void setPostgresConnection(const nlohmann::json &postgresSqlProperties);
 

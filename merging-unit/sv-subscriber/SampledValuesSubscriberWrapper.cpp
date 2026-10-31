@@ -67,7 +67,7 @@ SampledValuesSubscriberWrapper::~SampledValuesSubscriberWrapper()
     }
 }
 
-void SampledValuesSubscriberWrapper::addStream(const nlohmann::json &streamConfig, std::function<void(bool)> publishFn)
+void SampledValuesSubscriberWrapper::addStream(const nlohmann::json &streamConfig, std::function<void(uint16_t, bool)> publishFn)
 {
     auto params = std::make_unique<ListenerParameters>();
     params->appId             = streamConfig.at("appId").get<uint16_t>();
@@ -420,7 +420,7 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
         // Report the aggregated threshold state once per sample; the publisher's
         // state-change debounce turns this into transition-only GOOSE.
         if (params->goosePublishMessageFunction)
-            params->goosePublishMessageFunction(anyAboveThreshold);
+            params->goosePublishMessageFunction(params->appId, anyAboveThreshold);
     }
 }
 

@@ -9,6 +9,8 @@ extern "C"
 #include <iomanip>
 #include <cstdint>
 #include <vector>
+#include <map>
+#include <mutex>
 #include <nlohmann/json.hpp>
 
 struct GooseRSessionKey
@@ -32,6 +34,8 @@ private:
     std::vector<GooseConnection> _connections;
     bool _lastValue    = false;  // publish on state CHANGE only (stNum semantics);
     bool _havePublished = false; // the per-sample caller would otherwise emit ~16k GOOSE/s
+    std::map<uint16_t, bool> _streamAbove; // per-stream threshold state (appId -> above), OR-ed
+    std::mutex _lock;                      // PublishMessage runs on every stream's receive thread
 
     static GooseConnection createConnection(const nlohmann::json &settings);
 
@@ -40,6 +44,6 @@ public:
     GoosePublisherWrapper(const nlohmann::json &settings);
     ~GoosePublisherWrapper();
 
-    void PublishMessage(bool value);
+    void PublishMessage(uint16_t appId, bool value); // per-stream state; trip = OR over streams
     void Print();
 };

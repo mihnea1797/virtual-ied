@@ -49,8 +49,8 @@ int main()
     {
         auto sub = std::make_unique<SampledValuesSubscriberWrapper>(streamConfig);
         sub->setPostgresConnection(postgresSqlProperties);
-        sub->addStream(streamConfig, [&goosePublisher](bool value)
-                       { goosePublisher->PublishMessage(value); });
+        sub->addStream(streamConfig, [&goosePublisher](uint16_t appId, bool value)
+                       { goosePublisher->PublishMessage(appId, value); });
         svSubscribers.push_back(std::move(sub));
     }
 
