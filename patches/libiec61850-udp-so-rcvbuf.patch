@@ -1,0 +1,51 @@
+From b56dde4f92b7bfa98a3b95e73813968dabcb0e4b Mon Sep 17 00:00:00 2001
+From: Mihnea Marin <mihnea.marin.mmc@gmail.com>
+Date: Sat, 31 Oct 2026 10:00:52 +0000
+Subject: [PATCH] HAL (linux): request an 8 MiB SO_RCVBUF on every UDP socket
+ and log the effective size
+
+Local change for the virtual IED (vied-lab). The kernel default receive buffer
+(net.core.rmem_default, 208 KiB, about 100 R-SV datagrams) overflowed under 4.5-5 MU of
+R-SV in the boundary sweep of 2026-09-15 (UDP RcvbufErrors, ~107k drops). The kernel
+grants min(request, net.core.rmem_max) x 2, so the host must set net.core.rmem_max >= 8 MiB
+(lab-up.sh does); the effective value is read back and printed so it is on record.
+
+Base: upstream 69977efe (v1.6_develop). Kept as patches/libiec61850-udp-so-rcvbuf.patch in
+the superproject so the change survives a fresh submodule checkout (git am).
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ hal/socket/linux/socket_linux.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/hal/socket/linux/socket_linux.c b/hal/socket/linux/socket_linux.c
+index ce435cd8..4c394c7e 100644
+--- a/hal/socket/linux/socket_linux.c
++++ b/hal/socket/linux/socket_linux.c
+@@ -808,6 +808,23 @@ UdpSocket_createUsingNamespace(int namespace)
+ 
+     if (sock != -1)
+     {
++        /* vIED (2026-09-30): the kernel default receive buffer (net.core.rmem_default,
++         * 208 KiB, ~100 R-SV datagrams) overflowed under 4.5-5 MU of R-SV in the boundary
++         * sweep (UDP RcvbufErrors, ~107k drops in the 2026-09-15 work-conserving run).
++         * Request 8 MiB; the kernel grants min(request, net.core.rmem_max) x 2, so
++         * net.core.rmem_max must be >= 8 MiB on the HOST (global sysctl; lab-up.sh sets
++         * it) or the request is silently capped. The effective value is read back and
++         * logged so the buffer actually in use is on record. */
++        int rcvbufReq = 8 * 1024 * 1024;
++        int rcvbufGot = 0;
++        socklen_t rcvbufLen = sizeof(rcvbufGot);
++
++        if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &rcvbufReq, sizeof(rcvbufReq)) != 0)
++            printf("SOCKET: UDP fd %i: SO_RCVBUF %i request failed (errno=%i)\n", sock, rcvbufReq, errno);
++        else if (getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &rcvbufGot, &rcvbufLen) == 0)
++            printf("SOCKET: UDP fd %i: SO_RCVBUF requested %i, effective %i bytes\n", sock, rcvbufReq, rcvbufGot);
++        fflush(stdout);
++
+         self = (UdpSocket)GLOBAL_MALLOC(sizeof(struct sSocket));
+ 
+         if (self)
+-- 
+2.53.0
+

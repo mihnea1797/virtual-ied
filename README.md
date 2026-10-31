@@ -91,6 +91,12 @@ docker exec -it clab-vied-lab-vied bash -lc 'cd /tmp && /opt/virtual-merging-uni
 - **PostgreSQL (optional):** to persist RMS data, run a PostgreSQL instance reachable
   at `127.0.0.1` with database `merging_unit`, user/password `postgres`/`postgres`
   (see `config.json`).
+- **libiec61850 carries one local commit** (`vied-udp-rcvbuf`, on top of upstream
+  69977efe): every UDP socket asks for an 8 MiB receive buffer. The commit is not on the
+  upstream remote, so after a fresh `git submodule update` that cannot find it, recreate it
+  with `git -C dependencies/libiec61850 am ../../patches/libiec61850-udp-so-rcvbuf.patch`
+  (or push the branch to a fork and point `.gitmodules` at it). The host must allow it:
+  `sysctl -w net.core.rmem_max=16777216` (lab-up.sh does this at boot).
 - **Making the mbedtls install durable:** add
   `bash -c "apt-get update && apt-get install -y libmbedtls-dev"` to the `vied`
   node's `exec:` steps in `vied-lab.clab.yml`, or bake `libmbedtls-dev` into the
