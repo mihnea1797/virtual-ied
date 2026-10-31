@@ -1,0 +1,29 @@
+{
+  "iface":      "eth1",
+  "freq":       50.0,
+  "amp1":       210.0,
+  "amp2":       210.0,
+  "stepTime":   10.0,
+  "threshold":  230.0,
+  "sampleRate": 4000,
+  "svLocalIP":  "10.10.40.4",
+  "remoteIP":   "10.10.30.1",
+  "remotePort": 105,
+  "appId":      16387,
+  "svID":       "sv4",
+  "dataset":    "dataset4",
+  "confRev":    1,
+  "httpPort":   8084,
+  "goose": {
+    "localIP":    "0.0.0.0",
+    "localPort":  1104,
+    "remoteIP":   "10.10.30.1",
+    "remotePort": 102,
+    "goCbRef":    "",
+    "keys": [
+      {"id": 1, "value": "0123456789ABCDEF"},
+      {"id": 2, "value": "FEDCBA9876543210"}
+    ]
+  },
+  "autoStart":  false
+}
