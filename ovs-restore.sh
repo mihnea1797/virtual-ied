@@ -40,7 +40,7 @@ docker exec $OVS bash -c '
 #    QoS off (single queue) = delete all ip flows: no mark -> no hop matches EF.
 docker exec $OVS bash -c '
   ovs-ofctl del-flows br0 "ip" || true
-  for p in 102 103 104; do
+  for p in 102 103 104 105 106; do   # 105/106: boundary-sweep load streams (qos_sweep.py LOAD_PUBLISHERS)
     ovs-ofctl add-flow br0 "priority=300,udp,tp_dst=$p,actions=mod_nw_tos:184,set_queue:1,NORMAL"
   done
   ovs-ofctl add-flow br0 "priority=100,ip,actions=mod_nw_tos:0,NORMAL"

@@ -21,10 +21,18 @@ WAN_QOS="$DIR/wan-qos.sh"
 SUB=clab-vied-lab-vied
 PUB=clab-vied-lab-vmu1
 
-echo "[lab-up] 1/4 openvswitch kernel module"
+echo "[lab-up] 0/5 host sysctl: UDP receive-buffer ceiling for the vIED's 8 MiB SO_RCVBUF"
+# net.core.rmem_max is a GLOBAL sysctl (read-only in container netns): the vIED's R-session
+# sockets request SO_RCVBUF = 8 MiB (libiec61850 HAL, 2026-09-30) and the kernel caps the
+# request at rmem_max, so it must be raised here or the 2026-09-15 receive-buffer overflow
+# (UDP RcvbufErrors at 4.5-5 MU) silently comes back. Not persisted in /etc/sysctl.d on purpose:
+# this script runs as root at every boot (systemd unit) and is the lab's single source of truth.
+sysctl -w net.core.rmem_max=16777216
+
+echo "[lab-up] 1/5 openvswitch kernel module"
 lsmod | grep -q openvswitch || modprobe openvswitch
 
-echo "[lab-up] 2/4 containerlab deploy (recreate veth links + IP/route exec steps)"
+echo "[lab-up] 2/5 containerlab deploy (recreate veth links + IP/route exec steps)"
 containerlab deploy --reconfigure -t "$TOPO"
 
 echo "[lab-up] 3/5 OVS bridge + 20 Mb/s HTB cap + EF/BE queues + DiffServ edge marking"
