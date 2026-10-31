@@ -57,6 +57,8 @@ struct Config
   std::string    svID       = "sv1";
   std::string    dataset    = "dataset1";
   uint32_t       confRev    = 1;
+  int            httpPort   = 8080; // control/UI port; distinct per process when several
+                                    // publishers share one container (boundary sweep)
   GooseSubConfig goose;
 };
 
@@ -383,6 +385,7 @@ static void load_config_file(const std::string &path)
     g.cfg.svID    = j.value("svID",    g.cfg.svID);
     g.cfg.dataset = j.value("dataset", g.cfg.dataset);
     g.cfg.confRev = j.value("confRev", g.cfg.confRev);
+    g.cfg.httpPort = j.value("httpPort", g.cfg.httpPort);
     if (j.contains("goose") && j["goose"].is_object()) {
       const auto &jg = j["goose"];
       g.cfg.goose.localIP    = jg.value("localIP",    g.cfg.goose.localIP);
@@ -522,7 +525,10 @@ int main(int argc, char **argv)
       }
     ); });
 
-  std::cout << "Listening on 0.0.0.0:8080\n";
-  svr.listen("0.0.0.0", 8080);
+  int httpPort;
+  { std::lock_guard<std::mutex> lk(g.m); httpPort = g.cfg.httpPort; }
+  std::cout << "Listening on 0.0.0.0:" << httpPort << "\n";
+  if (!svr.listen("0.0.0.0", httpPort))
+    std::cerr << "HTTP listen on port " << httpPort << " failed (port in use?)\n";
   return 0;
 }
