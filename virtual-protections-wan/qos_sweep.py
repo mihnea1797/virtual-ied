@@ -20,6 +20,7 @@ Run on the VM with the lab up (lab-up.sh / clab-vied-lab.service).
 import csv
 import json
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -67,7 +68,9 @@ LOAD_PUBLISHERS = [
 ACTIVE = list(PUBLISHERS)   # publishers emitting in the current condition (legacy campaign: always the 3)
 LOGGER_DIR = PUB_DIR + "/loggerOutput"      # harness CSVs (t_trip source, vmu1 only)
 MU_BIN     = "/opt/virtual-merging-unit/merging-unit"
+MU_NAME    = MU_BIN.rsplit("/", 1)[1]       # exact process name for pkill -x / ps (never -f, see sub_alive)
 MU_STATS   = "/tmp/mu-stats.jsonl"
+STATS_MAX_AGE_S = 10     # the vIED appends one record per stream every 2 s; nothing newer than this = dead or hung
 
 # ----------------------------- experiment -----------------------------
 DUR        = 30          # measured seconds per condition
@@ -266,18 +269,44 @@ def ef_mode_apply(mode):
     print(f"[setup] EF mode {mode}: EF class rate {ef_g:g} / ceil {got:g} Mb/s on all {len(HTB_HOPS)} hops (read back)")
     return got
 
+def parse_flows(out):
+    """(sorted UDP ports that get the EF mark + priority queue, number of bleach flows) out of
+    `ovs-ofctl dump-flows br0` text. Checked by tests/test_driver_checks.py."""
+    ef = sorted(int(p) for p in re.findall(r"\budp,tp_dst=(\d+) actions=mod_nw_tos:184,set_queue:1,NORMAL", out))
+    bleach = len(re.findall(r"\bip actions=mod_nw_tos:0,NORMAL", out))
+    return ef, bleach
+
+def flows_apply(on):
+    """Program the QoS arm on the edge switch and READ IT BACK, like every other setting of this
+    driver: a `docker exec` that fails under load would otherwise leave the previous arm in place
+    and the window would be measured as one arm but labelled as the other."""
+    want = (sorted(SV_PORTS), 1) if on else ([], 0)
+    for attempt in range(3):
+        if on:
+            for p in SV_PORTS:
+                dx(OVS, f"ovs-ofctl add-flow br0 'priority=300,udp,tp_dst={p},actions=mod_nw_tos:184,set_queue:1,NORMAL'")
+            dx(OVS, "ovs-ofctl add-flow br0 'priority=100,ip,actions=mod_nw_tos:0,NORMAL'")
+        else:
+            dx(OVS, "ovs-ofctl del-flows br0 'ip'")
+        r = dx(OVS, "ovs-ofctl dump-flows br0")
+        got = parse_flows(r.stdout)
+        if got == want:
+            return
+        time.sleep(0.5)
+    die(f"QoS {'on' if on else 'off'} not in effect on {OVS} after 3 attempts: "
+        f"EF-marked ports {got[0]}, bleach flows {got[1]}; wanted {want[0]}, {want[1]}\n"
+        f"  rc={r.returncode} stderr={r.stderr.strip()[:200]!r}")
+
 def flow_on():
     """DiffServ EF: mark R-SV with DSCP 46 (TOS 184) at the edge + priority queue on
     this hop; bleach every other IP flow (trust boundary). Downstream hops classify by
     DSCP alone — the 'mark once, honored end-to-end' model."""
-    for p in SV_PORTS:
-        dx(OVS, f"ovs-ofctl add-flow br0 'priority=300,udp,tp_dst={p},actions=mod_nw_tos:184,set_queue:1,NORMAL'")
-    dx(OVS, "ovs-ofctl add-flow br0 'priority=100,ip,actions=mod_nw_tos:0,NORMAL'")
+    flows_apply(True)
 
 def flow_off():
     """Single queue, no marking: without EF marks no downstream hop matches either,
     so one delete makes the whole path best-effort. The bandwidth caps stay."""
-    dx(OVS, "ovs-ofctl del-flows br0 'ip'")
+    flows_apply(False)
 
 def bg_server_start():
     dx(SUB, "pkill iperf3 || true")
@@ -344,8 +373,9 @@ def publishers_start():
     for p in PUBLISHERS + LOAD_PUBLISHERS:
         dx(p["cont"], "pkill -9 -x iec61850-lab || true")   # -x: exact name, never the wrapper shell
     time.sleep(2)
-    # fresh t_trip source: stale harness CSVs must never win the "newest" race
-    dx(PUBLISHERS[0]["cont"], f"rm -f {LOGGER_DIR}/sv_goose_*.csv")
+    # fresh t_trip source: stale harness CSVs must never win the "newest" race. mkdir: the directory
+    # is untracked, so a fresh clone lacks it and the publisher's logger then fails without a word.
+    dx(PUBLISHERS[0]["cont"], f"mkdir -p {LOGGER_DIR} && rm -f {LOGGER_DIR}/sv_goose_*.csv")
     for p in ACTIVE:
         if p.get("load_only"):   # IP alias on the hosting container (idempotent) + private cwd
             dx(p["cont"], f"ip addr add {p['ip']}/24 dev eth1 2>/dev/null; mkdir -p {p['cwd']}")
@@ -365,6 +395,22 @@ def publishers_guard():
             die(f"{p['cont']}/{p['cfg']}: source rate {pps} pps outside [{lo:.0f},{hi:.0f}]")
         print(f"  [guard] {p['cont']}/{p['cfg']}: 1 live publisher @ {pps} pps (udp/{p['port']})")
 
+def publishers_post_start(context=""):
+    """POST /start to every active publisher (load streams get this point's sample rate first), then
+    require the t_trip source: vMU1's harness must have opened a NEW event CSV for this start.
+    Without one (loggerOutput/ missing or unwritable) every t_trip would read NA with no error."""
+    t_mark = time.time()         # file mtimes are compared against this host clock (shared with the containers)
+    for p in ACTIVE:
+        if p.get("load_only"):   # applied by the following /start
+            pub_ctl(p["cont"], "configure", p["http"], json.dumps({"sampleRate": p["pps"]}))
+        if not pub_ctl(p["cont"], "start", p.get("http", 8080)):
+            die(f"{p['cont']}/{p['cfg']}: POST /start failed{context}")
+    cont = PUBLISHERS[0]["cont"]
+    new = dx(cont, f"find {LOGGER_DIR} -name 'sv_goose_*.csv' -newermt @{t_mark:.3f} 2>/dev/null | head -1").stdout.strip()
+    if not new:
+        die(f"{cont}: /start{context} produced no new harness CSV in {LOGGER_DIR} — t_trip would be NA "
+            f"for every window (is the directory there and writable by the publisher?)")
+
 def publishers_rearm():
     """Stop + start the sim on every publisher: re-arms step/threshold so each
     condition produces a fresh t_trip; smpCnt discontinuity lands before t0.
@@ -372,11 +418,7 @@ def publishers_rearm():
     for p in PUBLISHERS + LOAD_PUBLISHERS:
         pub_ctl(p["cont"], "stop", p.get("http", 8080))
     time.sleep(1.5)
-    for p in ACTIVE:
-        if p.get("load_only"):   # applied by the following /start
-            pub_ctl(p["cont"], "configure", p["http"], json.dumps({"sampleRate": p["pps"]}))
-        if not pub_ctl(p["cont"], "start", p.get("http", 8080)):
-            die(f"{p['cont']}/{p['cfg']}: POST /start failed")
+    publishers_post_start()
 
 def publishers_restart():
     """Fresh publisher PROCESSES for every stream + liveness re-check. Called at the start of
@@ -390,11 +432,7 @@ def publishers_restart():
         p["pps"] = 2000
     ACTIVE = PUBLISHERS + LOAD_PUBLISHERS
     publishers_start()
-    for p in ACTIVE:
-        if p.get("load_only"):
-            pub_ctl(p["cont"], "configure", p["http"], json.dumps({"sampleRate": p["pps"]}))
-        if not pub_ctl(p["cont"], "start", p.get("http", 8080)):
-            die(f"{p['cont']}/{p['cfg']}: POST /start failed after process restart")
+    publishers_post_start(" after process restart")
     wait_streams_live()
 
 def t_trip_ms():
@@ -413,14 +451,25 @@ def t_trip_ms():
         return None
 
 # ----------------------------- subscriber stats -----------------------------
+def sub_alive():
+    """Live vIED processes: exact process name, zombies excluded. Not `pgrep -f`: that also counts
+    the `sh -c` wrapper it runs in and the zombies every SIGKILL leaves behind (PID 1 in the
+    container is `sleep infinity`, which never reaps), so it said 'alive' with no vIED at all."""
+    r = dx(SUB, f"ps -eo stat=,comm= | awk '$2 == \"{MU_NAME}\" && $1 !~ /^Z/' | wc -l")
+    try:
+        return int(r.stdout.strip())
+    except ValueError:
+        return 0
+
 def subscriber_start():
-    dx(SUB, "pkill -9 -f merging-unit || true")
+    dx(SUB, f"pkill -9 -x {MU_NAME} || true")   # -x: exact name, never a build or shell that only mentions the path
     time.sleep(1)
     dx(SUB, f"rm -f {MU_STATS}")
     dxd(SUB, f"cd /tmp && {MU_BIN} >/tmp/mu.log 2>&1")
     time.sleep(3)
-    if dx(SUB, "pgrep -fc merging-unit").stdout.strip() in ("", "0"):
-        die("merging-unit did not start — check /tmp/mu.log in vied")
+    n = sub_alive()
+    if n != 1:
+        die(f"expected 1 live {MU_NAME} after start, found {n} — check /tmp/mu.log in vied")
 
 def stats_lines():
     out = dx(SUB, f"cat {MU_STATS} 2>/dev/null").stdout
@@ -432,20 +481,41 @@ def stats_lines():
             continue
     return lines
 
-def snapshot():
-    """Newest cumulative record per appid."""
+def snapshot(recs=None):
+    """Newest cumulative record per appid: out of `recs` when given (so one read of the stats
+    file serves both a snapshot and the window maxima), else out of a fresh read."""
     snap = {}
-    for rec in stats_lines():
+    for rec in (stats_lines() if recs is None else recs):
         snap[rec["appid"]] = rec
     return snap
+
+def stats_age_s(snap, now=None):
+    """Seconds since the vIED last wrote a stats record; None for an empty snapshot. ts_ms is the
+    vIED's wall clock, which the containers share with this host."""
+    if not snap:
+        return None
+    return (time.time() if now is None else now) - max(r["ts_ms"] for r in snap.values()) / 1000.0
+
+def require_fresh(snap, what):
+    """Abort unless the vIED is still writing stats. snapshot() returns the newest record however
+    old it is, so after a vIED crash t0 and t1 would be the same record and the window would be
+    written as rows of zeros instead of stopping the campaign."""
+    age = stats_age_s(snap)
+    if age is None or age > STATS_MAX_AGE_S:
+        die(f"vIED stats are stale at {what}: "
+            + ("no records" if age is None else f"newest record is {age:.0f} s old")
+            + f" (limit {STATS_MAX_AGE_S} s); live {MU_NAME} processes: {sub_alive()} — check /tmp/mu.log in vied")
 
 def wait_streams_live(timeout_s=60):
     want = {p["appid"] for p in ACTIVE}
     thr = {p["appid"]: SV_PPS_MIN * p.get("pps", 4000) / 4000 for p in ACTIVE}
     t0 = time.time()
+    live = set()
     while time.time() - t0 < timeout_s:
         snap = snapshot()
-        live = {a for a, r in snap.items() if r.get("rate", 0) > thr.get(a, SV_PPS_MIN)}
+        now = time.time()        # a stale record keeps its old rate: only fresh ones count as live
+        live = {a for a, r in snap.items()
+                if r.get("rate", 0) > thr.get(a, SV_PPS_MIN) and now - r["ts_ms"] / 1000.0 <= STATS_MAX_AGE_S}
         if want <= live:
             return
         time.sleep(2)
@@ -496,13 +566,15 @@ def run_condition(cond, qos, bg, rep, writer, csvf, globals_):
     w0 = time.time(); ef0, be0 = htb_snapshot()      # HTB class counters BEFORE the window
     rb0 = sub_rcvbuf_errors()
     t0 = snapshot()
+    require_fresh(t0, f"{cond} qos={qos} rep={rep} window start")
     bl_max = 0
     for i in range(DUR):
         time.sleep(1)
         if i % 3 == 2:                               # EF backlog sampled every 3 s (max kept)
             bl_max = max(bl_max, sum(s["backlog_p"] for s in htb_snapshot()[0]))
-    all_recs = stats_lines()
-    t1 = snapshot()
+    all_recs = stats_lines()                         # ONE read: a record landing between two reads would be
+    t1 = snapshot(all_recs)                          # in t1 but not in the window maxima (last 2 s dropped)
+    require_fresh(t1, f"{cond} qos={qos} rep={rep} window end")
     ef1, be1 = htb_snapshot(); w1 = time.time()      # ... and AFTER
     rb1 = sub_rcvbuf_errors()
     rgoose_n = rgoose_capture_stop()
@@ -556,6 +628,24 @@ def set_point(extra):
         LOAD_PUBLISHERS[idx]["pps"] = pps
         ACTIVE.append(LOAD_PUBLISHERS[idx])
 
+def restore_lab(args):
+    """Leave the lab in its default state on EVERY exit path (normal end, die(), Ctrl-C, kill,
+    exception): background generator stopped, QoS marking on (R-SV protected), and the paper's EF
+    configuration (work-conserving). Each step is attempted even if an earlier one fails; a failed
+    step ends the run non-zero."""
+    steps = [("stop background load", bg_stop), ("QoS marking on", flow_on)]
+    if args.campaign == "boundary" and args.ef_mode != "work-conserving":
+        steps.append(("EF mode work-conserving", lambda: ef_mode_apply("work-conserving")))
+    failed = []
+    for name, step in steps:
+        try:
+            step()
+        except (SystemExit, Exception) as e:      # die() raises SystemExit: still run the remaining steps
+            failed.append(name)
+            print(f"[cleanup] {name} FAILED: {e!r}")
+    if failed:
+        die("lab NOT restored (" + ", ".join(failed) + ") — run ovs-restore.sh / wan-qos.sh")
+
 def main():
     global DUR, REPS, WARMUP, ACTIVE
     import argparse
@@ -594,24 +684,21 @@ def main():
     ef_g = ef_guarantee_readback()
     print(f"[setup] link_bw={bw:.0f} Mb/s (HTB read-back), EF guarantee={ef_g:.0f} Mb/s (EF class rate, all hops), "
           f"netem={nm} ms one-way over {len(ROUTERS)} hops ({hops})")
-    if args.campaign == "boundary":
-        ef_mode_apply(args.ef_mode)
-        # Setup liveness/rate checks run in the single best-effort queue (no EF marking): with EF
-        # policed to 20 Mb/s the 25 Mb/s of verification streams would be back-pressured below the
-        # liveness threshold. The first condition re-applies the marking it needs.
-        flow_off()
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))   # a plain `kill` must also run the finally below
     try:
+        if args.campaign == "boundary":
+            ef_mode_apply(args.ef_mode)
+            # Setup liveness/rate checks run in the single best-effort queue (no EF marking): with EF
+            # policed to 20 Mb/s the 25 Mb/s of verification streams would be back-pressured below the
+            # liveness threshold. The first condition re-applies the marking it needs.
+            flow_off()
         ef_ceil = ef_ceil_readback()                 # recorded from the data plane, not from the flag
         ef_mode = "policed" if abs(ef_ceil - ef_g) < 0.01 else "work-conserving"
 
         subscriber_start()
         bg_server_start()
         publishers_start()
-        for p in ACTIVE:
-            if p.get("load_only"):
-                pub_ctl(p["cont"], "configure", p["http"], json.dumps({"sampleRate": p["pps"]}))
-            if not pub_ctl(p["cont"], "start", p.get("http", 8080)):
-                die(f"{p['cont']}/{p['cfg']}: initial POST /start failed")
+        publishers_post_start(" (initial)")
         print("[setup] waiting for all streams at the subscriber ...")
         wait_streams_live()
         publishers_guard()
@@ -624,8 +711,7 @@ def main():
 
         campaign(args, points, globals_)
     finally:
-        if args.campaign == "boundary" and args.ef_mode != "work-conserving":
-            ef_mode_apply("work-conserving")   # always leave the paper's EF configuration behind, even on abort
+        restore_lab(args)
 
 def campaign(args, points, globals_):
     with open(OUTCSV, "w", newline="") as csvf:
@@ -662,9 +748,7 @@ def campaign(args, points, globals_):
                     run_condition(f"load{bg}", "off", bg, rep, writer, csvf, globals_)
                     run_condition(f"load{bg}", "on",  bg, rep, writer, csvf, globals_)
 
-    bg_stop()
-    flow_on()  # leave QoS protecting R-SV
-    print(f"\n== done. results: {OUTCSV} ==")
+    print(f"\n== done. results: {OUTCSV} ==")        # background stop + QoS marking on: restore_lab()
 
     # headline: darkness off -> on per load (aggregated over streams)
     agg = {}
