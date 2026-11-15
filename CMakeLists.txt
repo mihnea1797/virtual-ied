@@ -69,6 +69,7 @@ set(SOURCES
 set(HEADERS
     ${CMAKE_SOURCE_DIR}/merging-unit/goose-publisher/GoosePublisherWrapper.hpp
     ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/SampledValuesSubscriberWrapper.hpp
+    ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/SmpCntTracker.hpp
 )
 
 # Adding library subdirectories
@@ -132,3 +133,10 @@ set_target_properties(merging-unit PROPERTIES
 #Sonarscan
 # Always export compile_commands.json
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Unit test of the smpCnt loss/reordering accounting (header-only, no libiec61850 needed).
+# Run from the build dir: ctest --output-on-failure   (or ./smpcnt-tracker-test)
+enable_testing()
+add_executable(smpcnt-tracker-test ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/tests/test_smpcnt_tracker.cpp)
+set_target_properties(smpcnt-tracker-test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME smpcnt-tracker COMMAND smpcnt-tracker-test)

@@ -11,6 +11,8 @@ extern "C"
 #include <vector>
 #include <chrono>
 #include <cstdint>
+#include <mutex>
+#include "SmpCntTracker.hpp"
 #include "RmsComputationObject.hpp"
 #include "ButterworthFilter.hpp"
 #include "FrequencyTracking.hpp"
@@ -50,12 +52,14 @@ struct StreamState
 // Per-stream reception stats — updated in the SV listener callback, one per appId.
 // Counters are cumulative (a reader takes deltas between snapshots); the win* maxima
 // reset at every PrintStats() call, so a reader takes max() over the windows it spans.
+// Written by the stream's receive thread and read by the main thread (PrintStats): every
+// access goes through ListenerParameters::statsLock.
 struct StreamStats
 {
     uint64_t received    = 0;
-    uint64_t lost        = 0;  // samples skipped, inferred from smpCnt gaps
+    uint64_t lost        = 0;  // samples that never arrived (smpCnt gaps not filled later); see SmpCntTracker
+    uint64_t reordered   = 0;  // samples that arrived after a later one (not lost)
     uint64_t duplicates  = 0;
-    int32_t  lastSmpCnt  = -1;
     bool     haveLastArr = false;
     std::chrono::steady_clock::time_point firstArr{};
     std::chrono::steady_clock::time_point lastArr{};
@@ -82,8 +86,10 @@ struct ListenerParameters
     double currentThreshold;
     std::function<void(uint16_t, bool)> goosePublishMessageFunction; // (appId, above); owned; heap-stable via unique_ptr
     StreamState state;
-    std::string svID;                                    // captured from first ASDU
-    StreamStats stats;
+    std::string svID;                                    // captured from first ASDU (under statsLock)
+    StreamStats stats;                                   // under statsLock
+    SmpCntTracker seq;                                   // smpCnt sequence state; receive thread only
+    std::mutex statsLock;                                // receive thread (per sample) vs main thread (PrintStats)
 };
 
 class SampledValuesSubscriberWrapper

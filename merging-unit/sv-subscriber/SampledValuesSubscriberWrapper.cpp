@@ -74,6 +74,8 @@ void SampledValuesSubscriberWrapper::addStream(const nlohmann::json &streamConfi
     params->voltageThreshold  = streamConfig.at("threshold").get<double>();
     params->currentThreshold  = streamConfig.at("threshold").get<double>();
     params->goosePublishMessageFunction = std::move(publishFn);
+    // Optional: the publisher's smpCnt wrap. Default = libiec61850 SVPublisher (counts 0..65534).
+    params->seq = SmpCntTracker(streamConfig.value("smpCntModulus", 65535u));
 
     // Parse data format
     const auto &dataFormat        = streamConfig.at("dataFormat");
@@ -304,6 +306,8 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
 
     // ---- per-stream stats (before any parse; every received ASDU counts) ----
     {
+        // PrintStats (main thread) snapshots and resets these every 2 s: one lock for the block.
+        std::lock_guard<std::mutex> lk(params->statsLock);
         StreamStats &S = params->stats;
         uint16_t smpCnt = SVSubscriber_ASDU_getSmpCnt(asdu);
         if (S.received == 0)
@@ -312,14 +316,7 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
             if (svID) params->svID = svID;
         }
         S.received++;
-        if (S.lastSmpCnt >= 0)
-        {
-            // uint16 delta absorbs the smpCnt wrap; a small gap = loss, a huge jump = wrap/resync
-            uint16_t delta = static_cast<uint16_t>(smpCnt - static_cast<uint16_t>(S.lastSmpCnt));
-            if (delta == 0)                     S.duplicates++;
-            else if (delta > 1 && delta < 8000) S.lost += (delta - 1);
-        }
-        S.lastSmpCnt = smpCnt;
+        params->seq.observe(smpCnt, S.lost, S.reordered, S.duplicates);
         if (S.haveLastArr)
         {
             double gapMs = std::chrono::duration<double, std::milli>(sampleTimeStamp - S.lastArr).count();
@@ -449,26 +446,39 @@ void SampledValuesSubscriberWrapper::PrintStats()
     printf("---- R-SV per-stream stats ----\n");
     for (auto &p : _listenerParams)
     {
-        StreamStats &S = p->stats;
+        // Snapshot and window reset in ONE critical section. The receive thread updates these on
+        // every sample; with a separate read and reset, a maximum written in between was erased
+        // (and every unsynchronised read was a data race).
+        StreamStats S;
+        std::string svID;
+        {
+            std::lock_guard<std::mutex> lk(p->statsLock);
+            S    = p->stats;
+            svID = p->svID;
+            p->stats.winJitterMaxMs    = 0.0;
+            p->stats.winOwdMaxMs       = 0.0;
+            p->stats.lastPrintReceived = S.received;
+            p->stats.lastPrintTime     = now;
+        }
+
         double winRate = 0.0;
         if (S.lastPrintTime.time_since_epoch().count() != 0)
         {
             double dt = std::chrono::duration<double>(now - S.lastPrintTime).count();
             if (dt > 0.0) winRate = static_cast<double>(S.received - S.lastPrintReceived) / dt;
         }
-        S.lastPrintReceived = S.received;
-        S.lastPrintTime = now;
 
         double jmean = (S.jitterN > 0) ? (S.jitterSumMs / static_cast<double>(S.jitterN)) : 0.0;
         double owdMean = (S.owdN > 0) ? (S.owdSumMs / static_cast<double>(S.owdN)) : 0.0;
         uint64_t expected = S.received + S.lost;
         double lossPct = (expected > 0) ? 100.0 * static_cast<double>(S.lost) / static_cast<double>(expected) : 0.0;
 
-        printf("  appId=0x%04X svID=%-8s rx=%llu rate=%.0f sa/s loss=%llu(%.2f%%) dup=%llu "
+        printf("  appId=0x%04X svID=%-8s rx=%llu rate=%.0f sa/s loss=%llu(%.2f%%) reord=%llu dup=%llu "
                "jit mean=%.3fms max=%.3fms stalls>5ms=%llu dark>16ms=%llu owd mean=%.1fms winmax=%.1fms\n",
-               p->appId, p->svID.c_str(),
+               p->appId, svID.c_str(),
                static_cast<unsigned long long>(S.received), winRate,
                static_cast<unsigned long long>(S.lost), lossPct,
+               static_cast<unsigned long long>(S.reordered),
                static_cast<unsigned long long>(S.duplicates), jmean, S.jitterMaxMs,
                static_cast<unsigned long long>(S.stalls5ms),
                static_cast<unsigned long long>(S.dark16ms), owdMean, S.winOwdMaxMs);
@@ -477,10 +487,11 @@ void SampledValuesSubscriberWrapper::PrintStats()
         {
             jsonl << "{\"ts_ms\":" << epochMs
                   << ",\"appid\":" << p->appId
-                  << ",\"svid\":\"" << p->svID << "\""
+                  << ",\"svid\":\"" << svID << "\""
                   << ",\"rx\":" << S.received
                   << ",\"rate\":" << winRate
                   << ",\"lost\":" << S.lost
+                  << ",\"reordered\":" << S.reordered
                   << ",\"dup\":" << S.duplicates
                   << ",\"jit_sum_ms\":" << S.jitterSumMs
                   << ",\"jit_n\":" << S.jitterN
@@ -492,10 +503,6 @@ void SampledValuesSubscriberWrapper::PrintStats()
                   << ",\"win_owdmax_ms\":" << S.winOwdMaxMs
                   << "}\n";
         }
-
-        // reset per-window maxima
-        S.winJitterMaxMs = 0.0;
-        S.winOwdMaxMs    = 0.0;
     }
     fflush(stdout);
 }

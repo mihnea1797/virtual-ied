@@ -6,7 +6,7 @@ Run:  .venv/bin/python tests/test_driver_checks.py   (prints 'ok').
 The dump-flows samples are real output of ovs-core in the lab, QoS on and QoS off."""
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from qos_sweep import parse_flows, snapshot, stats_age_s, SV_PORTS
+from qos_sweep import parse_flows, snapshot, stats_age_s, measure_window, SV_PORTS
 
 QOS_ON = """NXST_FLOW reply (xid=0x4):
  cookie=0x0, duration=428.843s, table=0, n_packets=206045, n_bytes=40796942, idle_age=377, priority=300,udp,tp_dst=102 actions=mod_nw_tos:184,set_queue:1,NORMAL
@@ -36,4 +36,20 @@ snap = snapshot(recs)                                    # newest record per app
 assert snap[16384]["rx"] == 30 and snap[16385]["rx"] == 20, snap
 assert stats_age_s(snap, now=1005.0) == 3.0              # age counts from the newest record of any stream
 assert stats_age_s({}, now=1005.0) is None               # no records at all: caller treats it as stale
+
+# measure_window: per-window deltas of the vIED's cumulative counters
+def rec(ts, rx, lost, **kw):
+    r = {"appid": 16384, "svid": "sv1", "ts_ms": ts, "rx": rx, "lost": lost, "dup": 0, "jit_sum_ms": 0.0, "jit_n": 0,
+         "win_jmax_ms": 0.0, "stalls_5ms": 0, "dark_16ms": 0, "owd_sum_ms": 0.0, "owd_n": 0, "win_owdmax_ms": 0.0}
+    r.update(kw)
+    return r
+s0, s1 = rec(0, 1000, 5, reordered=2), rec(30_000, 121_000, 9, reordered=7)
+m = measure_window({16384: s0}, {16384: s1}, [s0, s1])[16384]
+assert (m["rx"], m["lost"], m["reordered"], m["rate_sas"]) == (120_000, 4, 5, 4000.0), m
+# a late sample that straddles t0 takes one back out of `lost`: the window reports 0, not -1
+m = measure_window({16384: rec(0, 1000, 5, reordered=2)}, {16384: rec(30_000, 121_000, 4, reordered=3)}, [])[16384]
+assert (m["lost"], m["loss_pct"], m["reordered"]) == (0, 0.0, 1), m
+# stats from a vIED built before the `reordered` field existed: say so instead of inventing a 0
+m = measure_window({16384: rec(0, 1000, 5)}, {16384: rec(30_000, 121_000, 9)}, [])[16384]
+assert m["reordered"] == "NA", m
 print("ok")

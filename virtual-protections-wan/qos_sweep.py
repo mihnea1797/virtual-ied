@@ -122,7 +122,11 @@ COLS = ["cond", "qos", "bg_mbps", "appid", "svid",
         "sub_rcvbuf_drops",
         # appended (2026-09-30 re-run): R-GOOSE frames the vIED sent vMU1 during the window,
         # counted by tcpdump at vMU1 — measures the absence of the R-GOOSE storm instead of assuming it
-        "rgoose_frames_per_window"]
+        "rgoose_frames_per_window",
+        # appended (2026-11-15): samples that arrived after a later one. Until then every such sample
+        # was counted as TWO in `lost`, plus one phantom loss per smpCnt wrap (16.4 s); `lost` is now
+        # only what never arrived, so it reads lower than in CSVs without this column.
+        "reordered"]
 
 # ----------------------------- helpers -----------------------------
 def sh(cmd, timeout=90):
@@ -529,7 +533,9 @@ def measure_window(t0_snap, t1_snap, window_recs):
         if s0 is None:
             continue
         drx   = s1["rx"] - s0["rx"]
-        dlost = s1["lost"] - s0["lost"]
+        # the vIED takes a sample back out of `lost` when it turns up late; if that straddles t0 the
+        # delta is -1 for this window (the sample was counted in the previous one): floor at 0
+        dlost = max(0, s1["lost"] - s0["lost"])
         ddup  = s1["dup"] - s0["dup"]
         djs   = s1["jit_sum_ms"] - s0["jit_sum_ms"]
         djn   = s1["jit_n"] - s0["jit_n"]
@@ -545,6 +551,8 @@ def measure_window(t0_snap, t1_snap, window_recs):
             "lost":        dlost,
             "loss_pct":    round(100.0 * dlost / (drx + dlost), 3) if (drx + dlost) > 0 else 0.0,
             "dup":         ddup,
+            # "NA" = a vIED binary from before the column existed (its `lost` still has the old meaning)
+            "reordered":   (s1["reordered"] - s0["reordered"]) if ("reordered" in s1 and "reordered" in s0) else "NA",
             "jit_mean_ms": round(djs / djn, 4) if djn > 0 else 0.0,
             "jit_max_ms":  round(max((r["win_jmax_ms"] for r in wins), default=0.0), 3),
             "stalls_5ms":  s1["stalls_5ms"] - s0["stalls_5ms"],
@@ -611,7 +619,7 @@ def run_condition(cond, qos, bg, rep, writer, csvf, globals_):
         writer.writerow(row)
         csvf.flush()
         print(f"  [{cond} qos={qos} bg={bg} rep={rep}] appid={appid} rate={m['rate_sas']} sa/s "
-              f"loss={m['loss_pct']}% jmax={m['jit_max_ms']}ms dark={m['dark_16ms']} "
+              f"lost={m['lost']} ({m['loss_pct']}%) reord={m['reordered']} jmax={m['jit_max_ms']}ms dark={m['dark_16ms']} "
               f"owd={m['owd_mean_ms']}/{m['owd_max_ms']}ms trip={trip}")
     print(f"  [{cond} qos={qos} bg={bg} rep={rep}] rsv={extra['aggregate_rsv_mbps_nominal']}/"
           f"{extra['aggregate_rsv_mbps_measured']} Mb/s nominal/delivered, EF class sent={extra['ef_class_sent_mbps']} Mb/s "

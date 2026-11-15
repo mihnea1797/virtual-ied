@@ -35,7 +35,8 @@ commits; re-apply them from `patches/`.
 - Driver: run from `virtual-protections-wan/` with `.venv/bin/python -u qos_sweep.py ...`.
   Raw output `qos_sweep_<stamp>.csv` lands there (ignored); promote kept runs to
   `test-results/` with dated names. Self-tests (no lab needed): `.venv/bin/python tests/test_htb_parse.py`
-  and `.venv/bin/python tests/test_driver_checks.py`.
+  and `.venv/bin/python tests/test_driver_checks.py`. vIED unit test (smpCnt loss/reordering
+  accounting): `docker exec clab-vied-lab-vied bash -lc 'cd /root/virtual-merging-unit/build && cmake --build . --target smpcnt-tracker-test && ctest --output-on-failure'`.
 - The driver aborts instead of writing bad rows when the vIED stops writing stats (10 s), when a
   QoS arm does not read back from OVS, or when vMU1 opens no new `loggerOutput/` CSV on `/start`.
   On every exit (normal, abort, Ctrl-C, `kill`) it stops iperf3 and restores marking and EF mode.
@@ -94,6 +95,10 @@ A smoke test after the merge (2026-10-31, rsv4.5 EF work-conserving, one window)
   step, and vMU1 wins because the driver re-arms it ~25 ms before vMU2/vMU3. Consistent
   with all data (no t_trip below the floor) but argued, not measured. Option: set
   `amp2 = 210` in `iec61850-lab/config-vmu2.json` and `config-vmu3.json` so only vMU1 steps.
+- **`lost` changed meaning on 2026-11-15.** CSVs up to 2026-10-31 (no `reordered` column) count
+  every late sample twice in `lost`, plus one phantom loss per smpCnt wrap (16.4 s per stream).
+  From then on `lost` is only what never arrived and late samples are in `reordered`. Same day,
+  ratio 0.95 EF: old counter 561-730 "lost" per stream and window, new counter 0 lost, 441-469 reordered.
 - Ratios use L2 accounting (198 B frames); at IP level the ladder reads 0.88..1.47.
 - `bg_loss_pct` is NA by design (iperf3 is interrupted at window end).
 - Nothing has been pushed since the merge; the old GitHub repos `iec61850-lab` and
