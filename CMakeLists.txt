@@ -140,3 +140,9 @@ enable_testing()
 add_executable(smpcnt-tracker-test ${CMAKE_SOURCE_DIR}/merging-unit/sv-subscriber/tests/test_smpcnt_tracker.cpp)
 set_target_properties(smpcnt-tracker-test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME smpcnt-tracker COMMAND smpcnt-tracker-test)
+
+# Unit test of the RMS window that raises the trip (warm-up, steady value, samples to trip).
+add_executable(rms-computation-test ${CMAKE_SOURCE_DIR}/merging-unit/rms-computation/tests/test_rms_computation.cpp)
+target_link_libraries(rms-computation-test PRIVATE rms-computation)
+set_target_properties(rms-computation-test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME rms-computation COMMAND rms-computation-test)

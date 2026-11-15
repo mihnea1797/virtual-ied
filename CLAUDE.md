@@ -34,9 +34,12 @@ commits; re-apply them from `patches/`.
 - Rebuild the vIED: `docker exec clab-vied-lab-vied bash -lc 'cd /root/virtual-merging-unit/build && cmake --build . -j4'`.
 - Driver: run from `virtual-protections-wan/` with `.venv/bin/python -u qos_sweep.py ...`.
   Raw output `qos_sweep_<stamp>.csv` lands there (ignored); promote kept runs to
-  `test-results/` with dated names. Self-tests (no lab needed): `.venv/bin/python tests/test_htb_parse.py`
-  and `.venv/bin/python tests/test_driver_checks.py`. vIED unit test (smpCnt loss/reordering
-  accounting): `docker exec clab-vied-lab-vied bash -lc 'cd /root/virtual-merging-unit/build && cmake --build . --target smpcnt-tracker-test && ctest --output-on-failure'`.
+  `test-results/` with dated names.
+- Tests (no traffic needed). Driver and analysis, from `virtual-protections-wan/`:
+  `for t in tests/test_*.py; do .venv/bin/python "$t"; done` (each prints `ok`);
+  `test_analysis_golden.py` fails if the kept CSVs no longer reproduce the tracked `analysis/stats_*.csv`
+  and `table_*.tex`. vIED (RMS window, smpCnt loss/reordering accounting):
+  `docker exec clab-vied-lab-vied bash -lc 'cd /root/virtual-merging-unit/build && cmake --build . -j4 && ctest --output-on-failure'`.
 - The driver aborts instead of writing bad rows when the vIED stops writing stats (10 s), when a
   QoS arm does not read back from OVS, or when vMU1 opens no new `loggerOutput/` CSV on `/start`.
   On every exit (normal, abort, Ctrl-C, `kill`) it stops iperf3 and restores marking and EF mode.
