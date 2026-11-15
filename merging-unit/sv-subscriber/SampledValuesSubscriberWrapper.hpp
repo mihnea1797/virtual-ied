@@ -14,7 +14,6 @@ extern "C"
 #include "RmsComputationObject.hpp"
 #include "ButterworthFilter.hpp"
 #include "FrequencyTracking.hpp"
-#include <pqxx/pqxx>
 
 // Enum describing the possible formats of SV data
 enum class DataFormat
@@ -83,7 +82,6 @@ struct ListenerParameters
     double currentThreshold;
     std::function<void(uint16_t, bool)> goosePublishMessageFunction; // (appId, above); owned; heap-stable via unique_ptr
     StreamState state;
-    pqxx::connection *dbConn = nullptr;                   // non-owning
     std::string svID;                                    // captured from first ASDU
     StreamStats stats;
 };
@@ -101,15 +99,12 @@ private:
     std::vector<std::string> _multicastGroups;
     std::vector<RSessionKey> _keys;
 
-    std::unique_ptr<pqxx::connection>              _dbConn;
     std::vector<SVSubscriber>                      _subscribers;
     std::vector<std::unique_ptr<ListenerParameters>> _listenerParams;
 
     void ParseReceiverSettings(const nlohmann::json &settings);
 
-    static std::string ParsePostgresSQL(const nlohmann::json &postgresSqlProperties);
     static bool parseSVData(std::vector<int32_t> &voltageMeasurements, std::vector<int32_t> &currentMeasurements, const SVSubscriber_ASDU &asdu, DataFormat format);
-    static void storeRMSinDatabase(pqxx::connection &dbConn, uint16_t appId, uint32_t index, double rms, const std::string &measurement);
     static void SvUpdateListener(SVSubscriber subscriber, void *parameter, SVSubscriber_ASDU asdu);
 
 public:
@@ -118,8 +113,6 @@ public:
 
     // Add one data stream: creates an SVSubscriber for the given appId and registers its listener
     void addStream(const nlohmann::json &streamConfig, std::function<void(uint16_t, bool)> publishFn);
-
-    void setPostgresConnection(const nlohmann::json &postgresSqlProperties);
 
     void Start();
     void Print();

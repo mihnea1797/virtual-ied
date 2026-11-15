@@ -71,15 +71,13 @@ The app reads `/root/virtual-merging-unit/config.json` (hardcoded path), starts 
 SV listener on `eth1`, and the rGOOSE publisher. It runs in an infinite loop — stop
 it with **Ctrl-C**.
 
-Expected startup output:
+Expected startup output (one line per configured stream):
 
 ```
-Unable to connect to database! Proceeding without connection...
 Starting Listener...
 ```
 
-The database message is normal — PostgreSQL isn't installed, so RMS values aren't
-persisted (everything else works). To run for a fixed time instead of Ctrl-C:
+To run for a fixed time instead of Ctrl-C:
 `timeout 10 /opt/virtual-merging-unit/merging-unit`.
 
 ### All-in-one (paste into the host shell)
@@ -101,9 +99,6 @@ docker exec -it clab-vied-lab-vied bash -lc 'cd /tmp && /opt/virtual-merging-uni
   (SV source), `clab-vied-lab-router`.
 - **Network:** the app uses `eth1` (`10.10.30.1/24`); SV traffic arrives from the
   `vmu1` node via the router.
-- **PostgreSQL (optional):** to persist RMS data, run a PostgreSQL instance reachable
-  at `127.0.0.1` with database `merging_unit`, user/password `postgres`/`postgres`
-  (see `config.json`).
 - **libiec61850 carries one local commit** (`vied-udp-rcvbuf`, on top of upstream
   69977efe): every UDP socket asks for an 8 MiB receive buffer. The commit is not on the
   upstream remote, so after a fresh `git submodule update` that cannot find it, recreate it

@@ -74,7 +74,6 @@ void SampledValuesSubscriberWrapper::addStream(const nlohmann::json &streamConfi
     params->voltageThreshold  = streamConfig.at("threshold").get<double>();
     params->currentThreshold  = streamConfig.at("threshold").get<double>();
     params->goosePublishMessageFunction = std::move(publishFn);
-    params->dbConn = _dbConn.get();
 
     // Parse data format
     const auto &dataFormat        = streamConfig.at("dataFormat");
@@ -378,11 +377,6 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                 double rms = params->state.voltageRmsObject[index].computeValue(filteredValue);
                 // double rms = params->state.voltageRmsObject[index].computeValue(voltageMeasurements[index]);
 
-                if (params->dbConn)
-                {
-                    storeRMSinDatabase(*params->dbConn, params->appId, index, rms, "V");
-                }
-
                 if (rms > params->voltageThreshold)
                     anyAboveThreshold = true;
 
@@ -404,11 +398,6 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
                 double rms = params->state.currentRmsObject[index].computeValue(filteredValue);
                 // double rms = params->state.currentRmsObject[index].computeValue(currentMeasurements[index]);
 
-                if (params->dbConn)
-                {
-                    storeRMSinDatabase(*params->dbConn, params->appId, index, rms, "C");
-                }
-
                 if (rms > params->currentThreshold)
                     anyAboveThreshold = true;
 
@@ -421,17 +410,6 @@ void SampledValuesSubscriberWrapper::SvUpdateListener(SVSubscriber subscriber, v
         // state-change debounce turns this into transition-only GOOSE.
         if (params->goosePublishMessageFunction)
             params->goosePublishMessageFunction(params->appId, anyAboveThreshold);
-    }
-}
-
-void SampledValuesSubscriberWrapper::setPostgresConnection(const nlohmann::json &postgresSqlProperties)
-{
-    try {
-        _dbConn = std::make_unique<pqxx::connection>(ParsePostgresSQL(postgresSqlProperties));
-    }
-    catch(...) {
-        printf("Unable to connect to database! Proceeding without connection...\n");
-        _dbConn = nullptr;
     }
 }
 
@@ -543,25 +521,4 @@ void SampledValuesSubscriberWrapper::ParseReceiverSettings(const nlohmann::json 
             _keys.push_back(key);
         }
     }
-}
-std::string SampledValuesSubscriberWrapper::ParsePostgresSQL(const nlohmann::json &postgresSqlProperties)
-{
-    std::string postgresSqlConfigString = "";
-    postgresSqlConfigString += "dbname=" + postgresSqlProperties.at("dbname").get<std::string>() + " ";
-    postgresSqlConfigString += "user=" + postgresSqlProperties.at("user").get<std::string>() + " ";
-    postgresSqlConfigString += "password=" + postgresSqlProperties.at("password").get<std::string>() + " ";
-    postgresSqlConfigString += "hostaddr=" + postgresSqlProperties.at("hostaddr").get<std::string>();
-
-    return postgresSqlConfigString;
-}
-
-void SampledValuesSubscriberWrapper::storeRMSinDatabase(pqxx::connection &dbConn, uint16_t appId, uint32_t index, double rms, const std::string &measurement)
-{
-    std::string query =
-        "INSERT INTO rms_voltage (time, app_id, phase, rms_value) "
-        "VALUES (NOW(), $1, $2, $3, $4);";
-
-    pqxx::work txn(dbConn);
-    txn.exec_params(query, std::to_string(appId), index, rms, measurement);
-    txn.commit();
 }

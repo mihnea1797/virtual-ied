@@ -35,8 +35,6 @@ int main()
         return 1;
     }
 
-    nlohmann::json postgresSqlProperties = config["postgresSql"];
-
     std::unique_ptr<GoosePublisherWrapper> goosePublisher = std::make_unique<GoosePublisherWrapper>(gooseSettings);
 
     // One receiver (own RSession/UDP port/receive thread) PER merging unit, standard
@@ -48,7 +46,6 @@ int main()
     for (const auto &streamConfig : sampledValuesSettingsArray)
     {
         auto sub = std::make_unique<SampledValuesSubscriberWrapper>(streamConfig);
-        sub->setPostgresConnection(postgresSqlProperties);
         sub->addStream(streamConfig, [&goosePublisher](uint16_t appId, bool value)
                        { goosePublisher->PublishMessage(appId, value); });
         svSubscribers.push_back(std::move(sub));

@@ -58,26 +58,6 @@ set(BUILD_TOOLS          OFF CACHE BOOL "" FORCE)
 # Build the library
 add_subdirectory(${LIBIEC61850_DIR} EXCLUDE_FROM_ALL)  # defines target: iec61850
 
-# Find PostgreSQL C client (libpq)
-find_package(PostgreSQL REQUIRED)
-if(NOT PostgreSQL_FOUND)
-    message(FATAL_ERROR "PostgreSQL client library not found. Install libpq-dev")
-endif()
-
-# Find PostgreSQL C++ API (libpqxx)
-find_path(PQXX_INCLUDE_DIR NAMES pqxx/pqxx PATHS /usr/include /usr/local/include)
-find_library(PQXX_LIBRARY NAMES pqxx PATHS /usr/lib /usr/local/lib)
-if(NOT PQXX_INCLUDE_DIR OR NOT PQXX_LIBRARY)
-    message(FATAL_ERROR "libpqxx not found. Install libpqxx-dev")
-endif()
-
-# Include directories
-set(INCLUDE_DIRECTORIES
-    ${PostgreSQL_INCLUDE_DIRS}
-    ${PQXX_INCLUDE_DIR}
-)
-include_directories(${INCLUDE_DIRECTORIES})
-
 # Source files for the merging-unit project
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/merging-unit/Main.cpp
@@ -109,8 +89,6 @@ target_link_libraries(merging-unit
     rms-computation
     butterworth-filter
     frequency-tracking
-    ${PostgreSQL_LIBRARIES}
-    ${PQXX_LIBRARY}
 )
 
 

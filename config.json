@@ -227,11 +227,5 @@
                 ]
             }
         }
-    ],
-    "postgresSql": {
-        "dbname": "merging_unit",
-        "user": "postgres",
-        "password": "postgres",
-        "hostaddr": "127.0.0.1"
-    }
+    ]
 }
