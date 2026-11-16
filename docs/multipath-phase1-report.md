@@ -5,12 +5,10 @@
 - Raw results: [`virtual-protections-wan/multipath/test-results/`](../virtual-protections-wan/multipath/test-results/)
 - Date of all measurements: 2026-11-16
 
-**Status: all five acceptance tests pass.** One finding is outside those tests and open: in 4 of
-the 40 accepted windows the streams show short delay spikes with gaps above 16 ms, which none of
-the paper lab's kept EF runs show. A same-day control on the paper lab showed the same kind of
-spike in one of its two valid windows before the VM lost time again and stopped it, so the
-spikes look like the host on this day rather than the two-path lab — on thin evidence (see
-"Delay spikes").
+**Status: all five acceptance tests pass**, and each path has a second clean set of trips from a
+back-to-back run with the paper lab. One finding is outside those tests: occasional delay spikes
+with gaps above 16 ms. They appeared in both labs today and are not specific to the two-path lab;
+whether it has a small extra rate of its own is not settled (see "Delay spikes").
 
 ## What was built
 
@@ -113,47 +111,56 @@ Nothing failed over (none is configured). Shapers, netem, tunnels and pin read b
 afterwards. The test ran while the VM clock was 8.3 % fast (next section but one), so the seconds
 above are about 8 % shorter than real seconds; the up/down outcome does not depend on that.
 
-## Delay spikes (open, outside the acceptance tests)
+## Delay spikes (outside the acceptance tests)
 
 The acceptance tests look at t_trip, drops, marking and BFD. The per-stream gap and delay
-columns show something those tests do not cover:
+columns show something those tests do not cover: now and then a window has a delay spike of
+tens of milliseconds, with a burst of reordered samples and gaps above 16 ms. Nothing is lost,
+and no t_trip moved, because no spike coincided with a step.
 
-| Runs, EF arm, 3 streams | Windows | Windows with a gap above 16 ms | Worst one-way delay of a sample |
-|---|---|---|---|
-| Paper lab, kept runs (2026-08-29, 2026-09-30) | 70 | 0 | 28 ms |
-| This lab, path A | 20 | 2 (3 gaps) | 61 ms |
-| This lab, path B | 20 | 2 (7 gaps) | 684 ms (next worst 83 ms) |
+All runs below are EF, 3 streams, 30 s windows, without background and at the 140 % level.
 
-- The spikes last tens of milliseconds, come with a burst of reordered samples, and lose
-  nothing. They did not move any t_trip, because none coincided with a step.
-- The kernel printed `htb: too many events!` five times today: twice at 19:23:20, as the driver
-  moved the pin back from path B to path A after the path B build check, and three times during
-  the path B run (20:45:48 inside the first spike window, 20:48:47 at the start of the second,
-  20:49:24 four seconds after it). None was logged during the path A runs, which have spikes too.
-  The kernel log only goes back to today's boot, so whether the paper lab ever produced that
-  message is unknown.
-- Why it matters: phase 2 measures outages of exactly this size.
-
-**Same-day control on the paper lab** (`paper_control_20261116_partial.csv`, `_side.csv`,
-`.log.txt`). `multipath/paper_control.py` runs the acceptance sequence on the paper lab with the
-paper driver's own setup and `run_condition()`. The run stopped itself in its third measured
-window, because the VM had lost time again (next section). What it measured before that:
-
-| Paper lab, 2026-11-16 | t_trip | Gaps above 16 ms | Worst one-way delay | Reordered samples |
+| When | Lab | Windows | Windows with a gap above 16 ms | Worst one-way delay |
 |---|---|---|---|---|
-| no background, repetition 1 | 18.21 ms | 0 | 9 ms | 8 |
-| 140 % level (24M), repetition 1 | 18.32 ms | 4 | 55 ms | 165 |
+| Campaign days (2026-08-29, 2026-09-30) | paper, kept runs | 70 | 0 | 28 ms |
+| Today, laptop sleeping at intervals | two-path, the accepted runs | 40 | 4 (10 gaps) | 684 ms (next 83 ms) |
+| | paper, partial control | 2 | 1 (4 gaps) | 55 ms |
+| Today, laptop kept awake, back to back | paper, full control | 20 | 0 | 15 ms |
+| | two-path, path A then path B | 40 | 1 (5 gaps) | 69 ms |
 
-- One of the paper lab's two valid windows has the same kind of spike, and the kernel printed
-  `htb: too many events!` at the start of that window (21:10:38).
-- So the spikes are not specific to the two-path lab: the unchanged paper lab, which had none in
-  70 kept windows on its campaign days, produced one within two windows today.
-- This is two windows, not a campaign. It makes "the host on this day" the likely cause and
-  "the two-path lab" unlikely as the only cause; it does not measure how often either lab spikes.
-- The same host paused the whole VM twice today. Shorter stalls of the same kind (tens of
-  milliseconds) would look exactly like these spikes from inside, and nothing inside the VM can
-  tell them apart from a busy kernel. That is a hypothesis, not a measurement.
-- Next: repeat the control in full once the host leaves the VM alone, on both labs back to back.
+Raw files: `paper_control_20261116_partial.*`, `paper_control_20261116.*`,
+`backtoback_pathA_20261116.*`, `backtoback_pathB_20261116.*`.
+
+t_trip in the back-to-back runs: paper 18.24 / 18.26 ms, path A 18.24 / 18.24 ms, path B
+18.28 / 18.27 ms (no background / 140 % level), none above 20 ms, no drops, no losses. That gives
+each path a second clean set of 20 trips.
+
+What the table supports, and what it does not:
+
+- **The spikes are not specific to the two-path lab.** The unchanged paper lab produced one today
+  (in the two windows it got between two laptop sleeps), after none in 70 kept windows.
+- **With the laptop awake both labs were nearly clean:** 0 of 20 and 1 of 40. Those two rates
+  cannot be told apart (Fisher exact p = 1.0), so no difference between the labs is shown.
+- **Keeping the laptop awake looks like it helped** (two-path: 4 of 40 before, 1 of 40 after), but
+  that difference is not established either (p = 0.36).
+- A small rate of spikes in the two-path lab that the paper lab does not have cannot be ruled
+  out with these counts. Settling it needs on the order of a hundred windows per lab, back to back.
+
+Two more observations:
+
+- The kernel printed `htb: too many events!` nine times today, in both labs, and at four of the
+  six spike windows. As I read the kernel source (not verified here): each shaper prints it at
+  most once in its lifetime, so a missing message means little; and it is printed when the
+  shaper's bookkeeping loop, a handful of instructions, is still running two clock ticks (2 ms)
+  after it started. If that reading is right, the virtual CPU stopped running for that long.
+- `multipath/stall_watch.py` (one process per CPU, noting wake-ups more than 12 ms late) ran
+  beside the last path B run (`stall_watch_pathB_20261116.csv`). In 15 minutes it saw 11 late
+  wake-ups of 13–26 ms, each on a single CPU, never on all four at once, and that run had no spike
+  window. So there was nothing to match a spike against; the watcher is ready for the next time.
+
+For phase 2: outages of a few tens of milliseconds are what failover tests measure. On this
+host an occasional one appears with no fault injected, so each fault test needs a no-fault
+control of the same length, and the per-window clock and stall records kept.
 
 ## The VM pause
 
@@ -179,7 +186,10 @@ acceptance result: the VM was paused for about 23.7 minutes in the middle of it.
   `clock_adj_ms`, `vm_pause_s` and `ntp_step_s` (one SNTP exchange at each end of the window,
   added after the second pause) and stops the run without writing the row if any of them shows a
   slew or a pause.
-- Only the host can prevent the pauses.
+- It happened a third time at 21:16 (2083 s), caught at once by the internet-time check. The
+  owner then stopped the laptop's automatic sleep and restarted the time daemon; the control and
+  the back-to-back runs (21:58 – 22:48) had no pause and no clock step.
+- Only the host can prevent the pauses: the VM is frozen whenever the laptop sleeps.
 
 ## What differs from the spec
 
@@ -193,12 +203,13 @@ acceptance result: the VM was paused for about 23.7 minutes in the middle of it.
 | Read-back | six items | plus MTU, HTB quanta and bursts, and the VM clock | found necessary while building |
 | Idle `controller` node, host port 8080 | — | left out | no controller in phase 1; the port would collide with the paper lab at boot |
 | Path A | one run | two runs, the first kept but not accepted | the VM pause |
-| Paper-lab control | — | `paper_control.py`, partial run | to place the delay spikes |
+| Paper-lab control | — | `paper_control.py` (one partial run, one full), then both paths again | to place the delay spikes |
 
 ## Open
 
-- The delay spikes: repeat the paper-lab control in full, back to back with the two-path lab, once
-  the host no longer pauses the VM.
+- The delay spikes: a longer back-to-back comparison (about a hundred windows per lab) if a small
+  extra rate in the two-path lab has to be ruled out; otherwise a no-fault control beside every
+  phase 2 fault test.
 - The driver logs one averaged ping at setup; logging the single pings would have explained the
   23.29 ms reading on path A.
 - The paper lab's driver has no clock check; a paused VM would go unnoticed there too.

@@ -1,0 +1,452 @@
+{
+ "stamp": "20261116_221457",
+ "clock": {
+  "adj_ms_in_2s": 0.012,
+  "rtc_minus_system_s": 0.3,
+  "ntp_minus_system_s": 0.001
+ },
+ "shapers": [
+  {
+   "label": "ovs-a eth5 (path A access hop)",
+   "classes": {
+    "1:fffe": {
+     "role": "total",
+     "rate_kbit": 37500,
+     "ceil_kbit": 37500,
+     "quantum": null,
+     "burst_b": 9499
+    },
+    "1:1": {
+     "role": "best effort",
+     "rate_kbit": 1250,
+     "ceil_kbit": 37500,
+     "quantum": 12500,
+     "burst_b": 9564
+    },
+    "1:2": {
+     "role": "EF",
+     "rate_kbit": 25000,
+     "ceil_kbit": 37500,
+     "quantum": 200000,
+     "burst_b": 9564
+    }
+   },
+   "default": "1:1",
+   "ef_filter": "1:2"
+  },
+  {
+   "label": "r1a eth2 (path A)",
+   "classes": {
+    "1:1": {
+     "role": "total",
+     "rate_kbit": 37500,
+     "ceil_kbit": 37500,
+     "quantum": null,
+     "burst_b": 1600
+    },
+    "1:10": {
+     "role": "best effort",
+     "rate_kbit": 12500,
+     "ceil_kbit": 37500,
+     "quantum": 125000,
+     "burst_b": 1600
+    },
+    "1:20": {
+     "role": "EF",
+     "rate_kbit": 25000,
+     "ceil_kbit": 37500,
+     "quantum": 200000,
+     "burst_b": 1600
+    }
+   },
+   "default": "1:10",
+   "ef_filter": "1:20"
+  },
+  {
+   "label": "r2a eth2 (path A)",
+   "classes": {
+    "1:1": {
+     "role": "total",
+     "rate_kbit": 37500,
+     "ceil_kbit": 37500,
+     "quantum": null,
+     "burst_b": 1600
+    },
+    "1:10": {
+     "role": "best effort",
+     "rate_kbit": 12500,
+     "ceil_kbit": 37500,
+     "quantum": 125000,
+     "burst_b": 1600
+    },
+    "1:20": {
+     "role": "EF",
+     "rate_kbit": 25000,
+     "ceil_kbit": 37500,
+     "quantum": 200000,
+     "burst_b": 1600
+    }
+   },
+   "default": "1:10",
+   "ef_filter": "1:20"
+  },
+  {
+   "label": "ovs-a eth6 (path B access hop)",
+   "classes": {
+    "1:fffe": {
+     "role": "total",
+     "rate_kbit": 37500,
+     "ceil_kbit": 37500,
+     "quantum": null,
+     "burst_b": 9499
+    },
+    "1:1": {
+     "role": "best effort",
+     "rate_kbit": 1250,
+     "ceil_kbit": 37500,
+     "quantum": 12500,
+     "burst_b": 9564
+    },
+    "1:2": {
+     "role": "EF",
+     "rate_kbit": 25000,
+     "ceil_kbit": 37500,
+     "quantum": 200000,
+     "burst_b": 9564
+    }
+   },
+   "default": "1:1",
+   "ef_filter": "1:2"
+  },
+  {
+   "label": "r1b eth2 (path B)",
+   "classes": {
+    "1:1": {
+     "role": "total",
+     "rate_kbit": 37500,
+     "ceil_kbit": 37500,
+     "quantum": null,
+     "burst_b": 1600
+    },
+    "1:10": {
+     "role": "best effort",
+     "rate_kbit": 12500,
+     "ceil_kbit": 37500,
+     "quantum": 125000,
+     "burst_b": 1600
+    },
+    "1:20": {
+     "role": "EF",
+     "rate_kbit": 25000,
+     "ceil_kbit": 37500,
+     "quantum": 200000,
+     "burst_b": 1600
+    }
+   },
+   "default": "1:10",
+   "ef_filter": "1:20"
+  },
+  {
+   "label": "r2b eth2 (path B)",
+   "classes": {
+    "1:1": {
+     "role": "total",
+     "rate_kbit": 37500,
+     "ceil_kbit": 37500,
+     "quantum": null,
+     "burst_b": 1600
+    },
+    "1:10": {
+     "role": "best effort",
+     "rate_kbit": 12500,
+     "ceil_kbit": 37500,
+     "quantum": 125000,
+     "burst_b": 1600
+    },
+    "1:20": {
+     "role": "EF",
+     "rate_kbit": 25000,
+     "ceil_kbit": 37500,
+     "quantum": 200000,
+     "burst_b": 1600
+    }
+   },
+   "default": "1:10",
+   "ef_filter": "1:20"
+  }
+ ],
+ "netem": {
+  "a": {
+   "fwd": [
+    2.5,
+    2.5
+   ],
+   "rev": [
+    2.5,
+    2.5
+   ]
+  },
+  "b": {
+   "fwd": [
+    2.5,
+    2.5
+   ],
+   "rev": [
+    2.5,
+    2.5
+   ]
+  }
+ },
+ "path": "a",
+ "pin": {
+  "flows": {
+   "clab-vied-mp-ovs-a": {
+    "ip_to": "vxa",
+    "arp_to": "vxa",
+    "drop_from": "vxb"
+   },
+   "clab-vied-mp-ovs-b": {
+    "ip_to": "vxa",
+    "arp_to": "vxa",
+    "drop_from": "vxb"
+   }
+  },
+  "trace": {
+   "rsv_udp102": {
+    "actions": "set(tunnel(tun_id=0x65,src=10.10.51.1,dst=10.10.53.2,tos=0xb8,ttl=64,tp_dst=4789,flags(df|key))),set(ipv4(tos=0xb8/0xfc)),6",
+    "tunnel": {
+     "vni": 101,
+     "src": "10.10.51.1",
+     "dst": "10.10.53.2",
+     "outer_tos": 184
+    },
+    "inner_tos": 184
+   },
+   "rsv_udp103": {
+    "actions": "set(tunnel(tun_id=0x65,src=10.10.51.1,dst=10.10.53.2,tos=0xb8,ttl=64,tp_dst=4789,flags(df|key))),set(ipv4(tos=0xb8/0xfc)),6",
+    "tunnel": {
+     "vni": 101,
+     "src": "10.10.51.1",
+     "dst": "10.10.53.2",
+     "outer_tos": 184
+    },
+    "inner_tos": 184
+   },
+   "rsv_udp104": {
+    "actions": "set(tunnel(tun_id=0x65,src=10.10.51.1,dst=10.10.53.2,tos=0xb8,ttl=64,tp_dst=4789,flags(df|key))),set(ipv4(tos=0xb8/0xfc)),6",
+    "tunnel": {
+     "vni": 101,
+     "src": "10.10.51.1",
+     "dst": "10.10.53.2",
+     "outer_tos": 184
+    },
+    "inner_tos": 184
+   },
+   "rsv_udp105": {
+    "actions": "set(tunnel(tun_id=0x65,src=10.10.51.1,dst=10.10.53.2,tos=0xb8,ttl=64,tp_dst=4789,flags(df|key))),set(ipv4(tos=0xb8/0xfc)),6",
+    "tunnel": {
+     "vni": 101,
+     "src": "10.10.51.1",
+     "dst": "10.10.53.2",
+     "outer_tos": 184
+    },
+    "inner_tos": 184
+   },
+   "rsv_udp106": {
+    "actions": "set(tunnel(tun_id=0x65,src=10.10.51.1,dst=10.10.53.2,tos=0xb8,ttl=64,tp_dst=4789,flags(df|key))),set(ipv4(tos=0xb8/0xfc)),6",
+    "tunnel": {
+     "vni": 101,
+     "src": "10.10.51.1",
+     "dst": "10.10.53.2",
+     "outer_tos": 184
+    },
+    "inner_tos": 184
+   },
+   "background": {
+    "actions": "set(tunnel(tun_id=0x65,src=10.10.51.1,dst=10.10.53.2,ttl=64,tp_dst=4789,flags(df|key))),set(ipv4(tos=0/0xfc)),6",
+    "tunnel": {
+     "vni": 101,
+     "src": "10.10.51.1",
+     "dst": "10.10.53.2",
+     "outer_tos": 0
+    },
+    "inner_tos": 0
+   },
+   "rgoose": {
+    "actions": "set(tunnel(tun_id=0x65,src=10.10.53.2,dst=10.10.51.1,ttl=64,tp_dst=4789,flags(df|key))),3",
+    "tunnel": {
+     "vni": 101,
+     "src": "10.10.53.2",
+     "dst": "10.10.51.1",
+     "outer_tos": 0
+    },
+    "inner_tos": null
+   }
+  }
+ },
+ "tunnels": {
+  "clab-vied-mp-ovs-a": {
+   "vxa": {
+    "type": "vxlan",
+    "ofport": 11,
+    "options": {
+     "dst_port": "4789",
+     "key": "101",
+     "local_ip": "10.10.51.1",
+     "remote_ip": "10.10.53.2",
+     "tos": "inherit"
+    },
+    "error": "[]",
+    "datapath_port": 6,
+    "datapath": "key=101, local_ip=10.10.51.1, remote_ip=10.10.53.2, tos=inherit",
+    "port_config": "NO_FLOOD"
+   },
+   "vxb": {
+    "type": "vxlan",
+    "ofport": 12,
+    "options": {
+     "dst_port": "4789",
+     "key": "102",
+     "local_ip": "10.10.61.1",
+     "remote_ip": "10.10.63.2",
+     "tos": "inherit"
+    },
+    "error": "[]",
+    "datapath_port": 6,
+    "datapath": "key=102, local_ip=10.10.61.1, remote_ip=10.10.63.2, tos=inherit",
+    "port_config": "NO_FLOOD"
+   }
+  },
+  "clab-vied-mp-ovs-b": {
+   "vxa": {
+    "type": "vxlan",
+    "ofport": 11,
+    "options": {
+     "dst_port": "4789",
+     "key": "101",
+     "local_ip": "10.10.53.2",
+     "remote_ip": "10.10.51.1",
+     "tos": "inherit"
+    },
+    "error": "[]",
+    "datapath_port": 3,
+    "datapath": "key=101, local_ip=10.10.53.2, remote_ip=10.10.51.1, tos=inherit",
+    "port_config": "NO_FLOOD"
+   },
+   "vxb": {
+    "type": "vxlan",
+    "ofport": 12,
+    "options": {
+     "dst_port": "4789",
+     "key": "102",
+     "local_ip": "10.10.63.2",
+     "remote_ip": "10.10.61.1",
+     "tos": "inherit"
+    },
+    "error": "[]",
+    "datapath_port": 3,
+    "datapath": "key=102, local_ip=10.10.63.2, remote_ip=10.10.61.1, tos=inherit",
+    "port_config": "NO_FLOOD"
+   }
+  }
+ },
+ "bfd": {
+  "vxa": {
+   "state": "up",
+   "flaps": 2,
+   "ends": {
+    "clab-vied-mp-ovs-a": {
+     "diagnostic": "No Diagnostic",
+     "flap_count": "1",
+     "forwarding": "true",
+     "remote_diagnostic": "No Diagnostic",
+     "remote_state": "up",
+     "state": "up",
+     "timers": {
+      "Detect Multiplier": "3",
+      "TX Interval": "Approx 1000ms",
+      "RX Interval": "Approx 1000ms",
+      "Local Minimum TX Interval": "100ms",
+      "Local Minimum RX Interval": "1000ms"
+     }
+    },
+    "clab-vied-mp-ovs-b": {
+     "diagnostic": "No Diagnostic",
+     "flap_count": "1",
+     "forwarding": "true",
+     "remote_diagnostic": "No Diagnostic",
+     "remote_state": "up",
+     "state": "up",
+     "timers": {
+      "Detect Multiplier": "3",
+      "TX Interval": "Approx 1000ms",
+      "RX Interval": "Approx 1000ms",
+      "Local Minimum TX Interval": "100ms",
+      "Local Minimum RX Interval": "1000ms"
+     }
+    }
+   }
+  },
+  "vxb": {
+   "state": "up",
+   "flaps": 2,
+   "ends": {
+    "clab-vied-mp-ovs-a": {
+     "diagnostic": "No Diagnostic",
+     "flap_count": "1",
+     "forwarding": "true",
+     "remote_diagnostic": "No Diagnostic",
+     "remote_state": "up",
+     "state": "up",
+     "timers": {
+      "Detect Multiplier": "3",
+      "TX Interval": "Approx 1000ms",
+      "RX Interval": "Approx 1000ms",
+      "Local Minimum TX Interval": "100ms",
+      "Local Minimum RX Interval": "1000ms"
+     }
+    },
+    "clab-vied-mp-ovs-b": {
+     "diagnostic": "No Diagnostic",
+     "flap_count": "1",
+     "forwarding": "true",
+     "remote_diagnostic": "No Diagnostic",
+     "remote_state": "up",
+     "state": "up",
+     "timers": {
+      "Detect Multiplier": "3",
+      "TX Interval": "Approx 1000ms",
+      "RX Interval": "Approx 1000ms",
+      "Local Minimum TX Interval": "100ms",
+      "Local Minimum RX Interval": "1000ms"
+     }
+    }
+   }
+  }
+ },
+ "mtu": {
+  "underlay": {
+   "ovs-a eth5": 9550,
+   "r1a eth1": 9550,
+   "r1a eth2": 9550,
+   "r2a eth1": 9550,
+   "r2a eth2": 9550,
+   "ovs-b eth1": 9550,
+   "ovs-a eth6": 9550,
+   "r1b eth1": 9550,
+   "r1b eth2": 9550,
+   "r2b eth1": 9550,
+   "r2b eth2": 9550,
+   "ovs-b eth2": 9550
+  },
+  "host": {
+   "vmu1 eth1": 9500,
+   "load-src eth1": 9500,
+   "vied eth1": 9500
+  },
+  "bg_outer_ip_b": 1278,
+  "largest_host_packet_fits": true
+ },
+ "ping_rtt_ms": 10.163,
+ "ping_note": "streams running, as the paper driver measures it"
+}

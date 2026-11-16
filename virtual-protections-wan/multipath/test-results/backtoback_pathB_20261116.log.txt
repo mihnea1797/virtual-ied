@@ -1,0 +1,165 @@
+== mp_sweep 20261116_223240: path B, 3 R-SV streams, levels ['60', '140'], arms ['on'], 30s/condition, 10 reps ==
+[setup] waiting for all streams at the subscriber ...
+  [guard] clab-vied-mp-vmu1/config.json: 1 live publisher @ 3877 pps (udp/102)
+  [guard] clab-vied-mp-vmu2/config-vmu2.json: 1 live publisher @ 3876 pps (udp/103)
+  [guard] clab-vied-mp-vmu3/config-vmu3.json: 1 live publisher @ 3875 pps (udp/104)
+[readback] ---- data plane, 2026-11-16 22:33:12 ----
+[readback] 1. shaped interfaces (kernel: tc class/qdisc/filter), rate / ceiling in kbit/s:
+    ovs-a eth5 (path A access hop)     total 1:fffe 37500/37500 burst 9499; best effort 1:1 1250/37500 q12500 burst 9564; EF 1:2 25000/37500 q200000 burst 9564; default 1:1; DSCP 46 -> 1:2
+    r1a eth2 (path A)                  total 1:1 37500/37500 burst 1600; best effort 1:10 12500/37500 q125000 burst 1600; EF 1:20 25000/37500 q200000 burst 1600; default 1:10; DSCP 46 -> 1:20
+    r2a eth2 (path A)                  total 1:1 37500/37500 burst 1600; best effort 1:10 12500/37500 q125000 burst 1600; EF 1:20 25000/37500 q200000 burst 1600; default 1:10; DSCP 46 -> 1:20
+    ovs-a eth6 (path B access hop)     total 1:fffe 37500/37500 burst 9499; best effort 1:1 1250/37500 q12500 burst 9564; EF 1:2 25000/37500 q200000 burst 9564; default 1:1; DSCP 46 -> 1:2
+    r1b eth2 (path B)                  total 1:1 37500/37500 burst 1600; best effort 1:10 12500/37500 q125000 burst 1600; EF 1:20 25000/37500 q200000 burst 1600; default 1:10; DSCP 46 -> 1:20
+    r2b eth2 (path B)                  total 1:1 37500/37500 burst 1600; best effort 1:10 12500/37500 q125000 burst 1600; EF 1:20 25000/37500 q200000 burst 1600; default 1:10; DSCP 46 -> 1:20
+[readback] 2. netem delay per router, per direction (ms):
+    path A: forward r1a 2.5 + r2a 2.5 = 5;  reverse r1a 2.5 + r2a 2.5 = 5
+    path B: forward r1b 2.5 + r2b 2.5 = 5;  reverse r1b 2.5 + r2b 2.5 = 5
+[readback] 3. path pin: path B (tunnel vxb)
+    ovs-a flow table: site-to-site IP -> vxb, ARP -> vxb, input dropped from vxa
+    ovs-b flow table: site-to-site IP -> vxb, ARP -> vxb, input dropped from vxa
+    switch decision for rsv_udp102: tunnel 10.10.61.1 -> 10.10.63.2 VNI 102, outer TOS 0xb8 (DSCP 46), inner TOS set to 0xb8
+    switch decision for rsv_udp103: tunnel 10.10.61.1 -> 10.10.63.2 VNI 102, outer TOS 0xb8 (DSCP 46), inner TOS set to 0xb8
+    switch decision for rsv_udp104: tunnel 10.10.61.1 -> 10.10.63.2 VNI 102, outer TOS 0xb8 (DSCP 46), inner TOS set to 0xb8
+    switch decision for rsv_udp105: tunnel 10.10.61.1 -> 10.10.63.2 VNI 102, outer TOS 0xb8 (DSCP 46), inner TOS set to 0xb8
+    switch decision for rsv_udp106: tunnel 10.10.61.1 -> 10.10.63.2 VNI 102, outer TOS 0xb8 (DSCP 46), inner TOS set to 0xb8
+    switch decision for background: tunnel 10.10.61.1 -> 10.10.63.2 VNI 102, outer TOS 0x00 (DSCP 0), inner TOS set to 0x00
+    switch decision for rgoose    : tunnel 10.10.63.2 -> 10.10.61.1 VNI 102, outer TOS 0x00 (DSCP 0)
+[readback] 4. VXLAN tunnels (interface + datapath port) and outer-DSCP copy:
+    ovs-a vxa: vxlan VNI 101 10.10.51.1 -> 10.10.53.2 udp/4789, tos=inherit, OpenFlow port 11, datapath port 6, NO_FLOOD
+    ovs-a vxb: vxlan VNI 102 10.10.61.1 -> 10.10.63.2 udp/4789, tos=inherit, OpenFlow port 12, datapath port 6, NO_FLOOD
+    ovs-b vxa: vxlan VNI 101 10.10.53.2 -> 10.10.51.1 udp/4789, tos=inherit, OpenFlow port 11, datapath port 3, NO_FLOOD
+    ovs-b vxb: vxlan VNI 102 10.10.63.2 -> 10.10.61.1 udp/4789, tos=inherit, OpenFlow port 12, datapath port 3, NO_FLOOD
+[readback] 5. BFD:
+    vxa (path A): UP — ovs-a state=up remote=up forwarding=true flaps=1; ovs-b state=up remote=up forwarding=true flaps=1
+        timers: min TX 100ms, min RX 1000ms, in use TX Approx 1000ms / RX Approx 1000ms, detect multiplier 3
+    vxb (path B): UP — ovs-a state=up remote=up forwarding=true flaps=1; ovs-b state=up remote=up forwarding=true flaps=1
+        timers: min TX 100ms, min RX 1000ms, in use TX Approx 1000ms / RX Approx 1000ms, detect multiplier 3
+[readback] 6. MTU: underlay [9550] on 12 interfaces, host links [9500]; largest background packet in the tunnel 1278 B IP -> no fragmentation; a full-size host packet fits: True
+[readback] 7. clock: system clock moved +0.013 ms against the raw clock in 2 s (limit 5); host RTC - system clock = 0.8 s (limit 5); internet time - system clock = 0.003 s (limit 0.5)
+[readback] 8. ping RTT vmu1 -> vied through path B: 10.12 ms (streams running, as the paper driver measures it; paper single-path baseline 10.13 ms)
+---- warm-up (discarded: post-deploy settling) ----
+  [warmup path=b qos=on bg=0K rep=0] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=6 jmax=1.824ms dark=0 owd=6.0/10ms trip=18.244
+  [warmup path=b qos=on bg=0K rep=0] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=7 jmax=2.387ms dark=0 owd=6.0/10ms trip=18.244
+  [warmup path=b qos=on bg=0K rep=0] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=11 jmax=1.97ms dark=0 owd=6.0/8ms trip=18.244
+  [warmup path=b qos=on bg=0K rep=0] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=379263+379296+379320, drops=0+0+0 overlimits=215 backlog_max=62p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [warmup path=b qos=on bg=0K rep=0] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 38 pkt; host CPU mean 35.8% max 38.8% busiest core 41.9%; clock adjusted 0.157 ms, VM paused 0.6 s by the RTC, -0.001 s by internet time
+  [warmup path=b qos=on bg=28794K rep=0] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=23 jmax=2.446ms dark=0 owd=6.13/12ms trip=18.287
+  [warmup path=b qos=on bg=28794K rep=0] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=18 jmax=2.675ms dark=0 owd=6.02/12ms trip=18.287
+  [warmup path=b qos=on bg=28794K rep=0] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=13 jmax=2.833ms dark=0 owd=6.18/13ms trip=18.287
+  [warmup path=b qos=on bg=28794K rep=0] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.7 Mb/s in 248.0 B frames, EF pkts per hop=380001+380003+380041, drops=0+0+0 overlimits=72 backlog_max=61p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [warmup path=b qos=on bg=28794K rep=0] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 39 pkt; host CPU mean 43.0% max 45.8% busiest core 48.6%; clock adjusted 0.16 ms, VM paused -0.1 s by the RTC, 0.005 s by internet time
+---- repetition 1/10 ----
+  [baseline path=b qos=on bg=0K rep=1] appid=16384 rate=4000.1 sa/s lost=0 (0.0%) reord=4 jmax=1.748ms dark=0 owd=6.12/11ms trip=18.219
+  [baseline path=b qos=on bg=0K rep=1] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=7 jmax=1.949ms dark=0 owd=6.21/10ms trip=18.219
+  [baseline path=b qos=on bg=0K rep=1] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=4 jmax=3.84ms dark=0 owd=6.04/11ms trip=18.219
+  [baseline path=b qos=on bg=0K rep=1] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=378850+378829+378840, drops=0+0+0 overlimits=280 backlog_max=63p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=1] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 38 pkt; host CPU mean 38.6% max 41.0% busiest core 43.2%; clock adjusted 0.157 ms, VM paused -0.5 s by the RTC, 0.001 s by internet time
+  [load140 path=b qos=on bg=28794K rep=1] appid=16384 rate=4000.3 sa/s lost=0 (0.0%) reord=7 jmax=2.208ms dark=0 owd=6.08/12ms trip=18.311
+  [load140 path=b qos=on bg=28794K rep=1] appid=16385 rate=4000.4 sa/s lost=0 (0.0%) reord=9 jmax=2.468ms dark=0 owd=6.22/12ms trip=18.311
+  [load140 path=b qos=on bg=28794K rep=1] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=16 jmax=3.239ms dark=0 owd=6.13/12ms trip=18.311
+  [load140 path=b qos=on bg=28794K rep=1] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.7 Mb/s in 248.0 B frames, EF pkts per hop=379484+379448+379429, drops=0+0+0 overlimits=67 backlog_max=62p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=1] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 40 pkt; host CPU mean 44.1% max 46.7% busiest core 48.6%; clock adjusted 0.16 ms, VM paused -0.1 s by the RTC, 0.001 s by internet time
+---- repetition 2/10 ----
+  [baseline path=b qos=on bg=0K rep=2] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=5 jmax=3.476ms dark=0 owd=6.24/11ms trip=18.342
+  [baseline path=b qos=on bg=0K rep=2] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=7 jmax=2.917ms dark=0 owd=6.02/11ms trip=18.342
+  [baseline path=b qos=on bg=0K rep=2] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=9 jmax=4.07ms dark=0 owd=6.03/11ms trip=18.342
+  [baseline path=b qos=on bg=0K rep=2] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=378150+378166+378195, drops=0+0+0 overlimits=145 backlog_max=63p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=2] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 39 pkt; host CPU mean 45.5% max 47.3% busiest core 49.6%; clock adjusted 0.156 ms, VM paused 0.6 s by the RTC, 0.001 s by internet time
+  [load140 path=b qos=on bg=28794K rep=2] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=11 jmax=2.864ms dark=0 owd=6.04/10ms trip=18.268
+  [load140 path=b qos=on bg=28794K rep=2] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=18 jmax=5.954ms dark=0 owd=6.19/12ms trip=18.268
+  [load140 path=b qos=on bg=28794K rep=2] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=10 jmax=2.698ms dark=0 owd=6.2/10ms trip=18.268
+  [load140 path=b qos=on bg=28794K rep=2] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=379444+379387+379352, drops=0+0+0 overlimits=48 backlog_max=82p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=2] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 39 pkt; host CPU mean 33.1% max 36.5% busiest core 38.5%; clock adjusted 0.16 ms, VM paused -0.1 s by the RTC, -0.006 s by internet time
+---- repetition 3/10 ----
+  [baseline path=b qos=on bg=0K rep=3] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=3 jmax=2.676ms dark=0 owd=6.01/10ms trip=18.317
+  [baseline path=b qos=on bg=0K rep=3] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=4 jmax=2.85ms dark=0 owd=6.22/10ms trip=18.317
+  [baseline path=b qos=on bg=0K rep=3] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=2 jmax=2.389ms dark=0 owd=6.01/10ms trip=18.317
+  [baseline path=b qos=on bg=0K rep=3] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=378208+378184+378060, drops=0+0+0 overlimits=55 backlog_max=63p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=3] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 37 pkt; host CPU mean 34.8% max 37.5% busiest core 41.0%; clock adjusted 0.144 ms, VM paused -0.3 s by the RTC, -0.006 s by internet time
+  [load140 path=b qos=on bg=28794K rep=3] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=10 jmax=5.608ms dark=0 owd=6.04/13ms trip=18.293
+  [load140 path=b qos=on bg=28794K rep=3] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=1 jmax=5.574ms dark=0 owd=6.11/13ms trip=18.293
+  [load140 path=b qos=on bg=28794K rep=3] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=7 jmax=3.422ms dark=0 owd=6.03/15ms trip=18.293
+  [load140 path=b qos=on bg=28794K rep=3] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.7 Mb/s in 248.0 B frames, EF pkts per hop=379326+379298+379320, drops=0+0+0 overlimits=72 backlog_max=62p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=3] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 38 pkt; host CPU mean 34.7% max 38.3% busiest core 41.4%; clock adjusted 0.143 ms, VM paused -0.1 s by the RTC, -0.003 s by internet time
+---- repetition 4/10 ----
+  [baseline path=b qos=on bg=0K rep=4] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=2 jmax=3.191ms dark=0 owd=6.0/9ms trip=18.211
+  [baseline path=b qos=on bg=0K rep=4] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=5 jmax=1.736ms dark=0 owd=6.0/8ms trip=18.211
+  [baseline path=b qos=on bg=0K rep=4] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=4 jmax=1.898ms dark=0 owd=6.0/9ms trip=18.211
+  [baseline path=b qos=on bg=0K rep=4] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=378572+378652+378624, drops=0+0+0 overlimits=67 backlog_max=64p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=4] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 38 pkt; host CPU mean 34.3% max 37.4% busiest core 39.8%; clock adjusted 0.14 ms, VM paused -0.4 s by the RTC, -0.003 s by internet time
+  [load140 path=b qos=on bg=28794K rep=4] appid=16384 rate=4000.1 sa/s lost=0 (0.0%) reord=27 jmax=2.163ms dark=0 owd=6.18/10ms trip=18.223
+  [load140 path=b qos=on bg=28794K rep=4] appid=16385 rate=4000.1 sa/s lost=0 (0.0%) reord=11 jmax=4.849ms dark=0 owd=6.2/11ms trip=18.223
+  [load140 path=b qos=on bg=28794K rep=4] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=8 jmax=2.466ms dark=0 owd=6.09/10ms trip=18.223
+  [load140 path=b qos=on bg=28794K rep=4] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=378916+378867+378879, drops=0+0+0 overlimits=55 backlog_max=65p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=4] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 38 pkt; host CPU mean 37.5% max 41.0% busiest core 43.4%; clock adjusted 0.142 ms, VM paused -0.9 s by the RTC, 0.004 s by internet time
+---- repetition 5/10 ----
+  [baseline path=b qos=on bg=0K rep=5] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=9 jmax=2.443ms dark=0 owd=6.07/9ms trip=18.309
+  [baseline path=b qos=on bg=0K rep=5] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=7 jmax=2.319ms dark=0 owd=6.06/9ms trip=18.309
+  [baseline path=b qos=on bg=0K rep=5] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=7 jmax=2.088ms dark=0 owd=6.12/9ms trip=18.309
+  [baseline path=b qos=on bg=0K rep=5] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.72 Mb/s in 248.0 B frames, EF pkts per hop=378288+378285+378281, drops=0+0+0 overlimits=70 backlog_max=63p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=5] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 37 pkt; host CPU mean 9.8% max 15.1% busiest core 17.3%; clock adjusted 0.14 ms, VM paused -0.3 s by the RTC, -0.002 s by internet time
+  [load140 path=b qos=on bg=28794K rep=5] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=14 jmax=3.345ms dark=0 owd=6.18/12ms trip=18.164
+  [load140 path=b qos=on bg=28794K rep=5] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=14 jmax=2.122ms dark=0 owd=6.04/14ms trip=18.164
+  [load140 path=b qos=on bg=28794K rep=5] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=11 jmax=1.748ms dark=0 owd=6.05/12ms trip=18.164
+  [load140 path=b qos=on bg=28794K rep=5] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=378996+379031+378969, drops=0+0+0 overlimits=83 backlog_max=63p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=5] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 38 pkt; host CPU mean 30.1% max 33.7% busiest core 36.5%; clock adjusted 0.142 ms, VM paused 0.0 s by the RTC, -0.0 s by internet time
+---- repetition 6/10 ----
+  [baseline path=b qos=on bg=0K rep=6] appid=16384 rate=4000.1 sa/s lost=0 (0.0%) reord=7 jmax=2.712ms dark=0 owd=6.03/10ms trip=18.233
+  [baseline path=b qos=on bg=0K rep=6] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=6 jmax=2.204ms dark=0 owd=6.07/9ms trip=18.233
+  [baseline path=b qos=on bg=0K rep=6] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=1 jmax=5.868ms dark=0 owd=6.2/12ms trip=18.233
+  [baseline path=b qos=on bg=0K rep=6] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=378292+378298+378217, drops=0+0+0 overlimits=149 backlog_max=68p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=6] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 38 pkt; host CPU mean 42.6% max 44.9% busiest core 47.5%; clock adjusted 0.151 ms, VM paused -0.4 s by the RTC, 0.001 s by internet time
+  [load140 path=b qos=on bg=28794K rep=6] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=13 jmax=4.902ms dark=0 owd=6.22/15ms trip=18.364
+  [load140 path=b qos=on bg=28794K rep=6] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=16 jmax=2.345ms dark=0 owd=6.03/12ms trip=18.364
+  [load140 path=b qos=on bg=28794K rep=6] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=19 jmax=3.142ms dark=0 owd=6.03/13ms trip=18.364
+  [load140 path=b qos=on bg=28794K rep=6] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=379648+379626+379654, drops=0+0+0 overlimits=73 backlog_max=63p, BE drops=0, bg=13.62 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=6] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 39 pkt; host CPU mean 41.0% max 43.8% busiest core 46.7%; clock adjusted 0.175 ms, VM paused -0.0 s by the RTC, -0.001 s by internet time
+---- repetition 7/10 ----
+  [baseline path=b qos=on bg=0K rep=7] appid=16384 rate=4000.1 sa/s lost=0 (0.0%) reord=2 jmax=2.213ms dark=0 owd=6.1/10ms trip=18.235
+  [baseline path=b qos=on bg=0K rep=7] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=4 jmax=2.145ms dark=0 owd=6.01/12ms trip=18.235
+  [baseline path=b qos=on bg=0K rep=7] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=9 jmax=2.011ms dark=0 owd=6.13/11ms trip=18.235
+  [baseline path=b qos=on bg=0K rep=7] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=378550+378519+378527, drops=0+0+0 overlimits=142 backlog_max=61p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=7] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 36 pkt; host CPU mean 29.4% max 32.9% busiest core 35.7%; clock adjusted 0.171 ms, VM paused 0.6 s by the RTC, -0.004 s by internet time
+  [load140 path=b qos=on bg=28794K rep=7] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=11 jmax=3.34ms dark=0 owd=6.23/12ms trip=18.243
+  [load140 path=b qos=on bg=28794K rep=7] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=12 jmax=4.567ms dark=0 owd=6.02/14ms trip=18.243
+  [load140 path=b qos=on bg=28794K rep=7] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=16 jmax=2.436ms dark=0 owd=6.14/14ms trip=18.243
+  [load140 path=b qos=on bg=28794K rep=7] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=379182+379172+379139, drops=0+0+0 overlimits=56 backlog_max=69p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=7] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 37 pkt; host CPU mean 46.2% max 48.4% busiest core 51.8%; clock adjusted 0.174 ms, VM paused 0.0 s by the RTC, 0.002 s by internet time
+---- repetition 8/10 ----
+  [baseline path=b qos=on bg=0K rep=8] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=2 jmax=3.013ms dark=0 owd=6.15/8ms trip=18.227
+  [baseline path=b qos=on bg=0K rep=8] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=5 jmax=1.94ms dark=0 owd=6.21/9ms trip=18.227
+  [baseline path=b qos=on bg=0K rep=8] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=11 jmax=2.267ms dark=0 owd=6.22/9ms trip=18.227
+  [baseline path=b qos=on bg=0K rep=8] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=378711+378678+378672, drops=0+0+0 overlimits=88 backlog_max=64p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=8] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 37 pkt; host CPU mean 45.4% max 47.6% busiest core 49.6%; clock adjusted 0.171 ms, VM paused -0.4 s by the RTC, -0.002 s by internet time
+  [load140 path=b qos=on bg=28794K rep=8] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=14 jmax=2.615ms dark=0 owd=6.21/11ms trip=18.226
+  [load140 path=b qos=on bg=28794K rep=8] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=8 jmax=2.414ms dark=0 owd=6.06/12ms trip=18.226
+  [load140 path=b qos=on bg=28794K rep=8] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=11 jmax=2.586ms dark=0 owd=6.12/13ms trip=18.226
+  [load140 path=b qos=on bg=28794K rep=8] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.69 Mb/s in 248.0 B frames, EF pkts per hop=379699+379737+379813, drops=0+0+0 overlimits=82 backlog_max=63p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=8] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 37 pkt; host CPU mean 33.7% max 37.3% busiest core 39.6%; clock adjusted 0.175 ms, VM paused -0.1 s by the RTC, 0.006 s by internet time
+---- repetition 9/10 ----
+  [baseline path=b qos=on bg=0K rep=9] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=2 jmax=3.296ms dark=0 owd=6.01/10ms trip=18.382
+  [baseline path=b qos=on bg=0K rep=9] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=5 jmax=1.862ms dark=0 owd=6.16/9ms trip=18.382
+  [baseline path=b qos=on bg=0K rep=9] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=4 jmax=2.685ms dark=0 owd=6.01/9ms trip=18.382
+  [baseline path=b qos=on bg=0K rep=9] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.7 Mb/s in 248.0 B frames, EF pkts per hop=379080+379077+379126, drops=0+0+0 overlimits=163 backlog_max=64p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=9] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 37 pkt; host CPU mean 32.0% max 35.4% busiest core 39.4%; clock adjusted 0.172 ms, VM paused 0.5 s by the RTC, -0.002 s by internet time
+  [load140 path=b qos=on bg=28794K rep=9] appid=16384 rate=4000.1 sa/s lost=0 (0.0%) reord=9 jmax=2.06ms dark=0 owd=6.04/12ms trip=18.29
+  [load140 path=b qos=on bg=28794K rep=9] appid=16385 rate=4000.1 sa/s lost=0 (0.0%) reord=11 jmax=2.291ms dark=0 owd=6.02/10ms trip=18.29
+  [load140 path=b qos=on bg=28794K rep=9] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=15 jmax=2.197ms dark=0 owd=6.03/12ms trip=18.29
+  [load140 path=b qos=on bg=28794K rep=9] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.7 Mb/s in 248.0 B frames, EF pkts per hop=379649+379617+379579, drops=0+0+0 overlimits=36 backlog_max=62p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=9] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 38 pkt; host CPU mean 32.4% max 36.1% busiest core 38.9%; clock adjusted 0.175 ms, VM paused -0.0 s by the RTC, 0.001 s by internet time
+---- repetition 10/10 ----
+  [baseline path=b qos=on bg=0K rep=10] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=2 jmax=8.294ms dark=0 owd=6.02/32ms trip=18.323
+  [baseline path=b qos=on bg=0K rep=10] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=7 jmax=7.271ms dark=0 owd=6.02/27ms trip=18.323
+  [baseline path=b qos=on bg=0K rep=10] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=13 jmax=3.688ms dark=0 owd=6.03/17ms trip=18.323
+  [baseline path=b qos=on bg=0K rep=10] offered 63.5% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.7 Mb/s in 248.0 B frames, EF pkts per hop=379002+378942+378958, drops=0+0+0 overlimits=863 backlog_max=61p, BE drops=0, bg=None Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline path=b qos=on bg=0K rep=10] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 37 pkt; host CPU mean 26.0% max 30.0% busiest core 33.0%; clock adjusted 0.172 ms, VM paused -0.5 s by the RTC, 0.001 s by internet time
+  [load140 path=b qos=on bg=28794K rep=10] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=19 jmax=5.173ms dark=0 owd=6.03/11ms trip=18.35
+  [load140 path=b qos=on bg=28794K rep=10] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=11 jmax=4.888ms dark=0 owd=6.08/13ms trip=18.35
+  [load140 path=b qos=on bg=28794K rep=10] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=14 jmax=2.762ms dark=0 owd=6.02/13ms trip=18.35
+  [load140 path=b qos=on bg=28794K rep=10] offered 146.2% of ceiling; rsv=23.81/23.81 Mb/s nominal/delivered (tunnel layer), EF class sent=23.71 Mb/s in 248.0 B frames, EF pkts per hop=379653+379680+379689, drops=0+0+0 overlimits=78 backlog_max=63p, BE drops=0, bg=13.61 Mb/s, rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load140 path=b qos=on bg=28794K rep=10] BFD vxb up->up (flaps 0), vxa up->up (flaps 0); other path carried 38 pkt; host CPU mean 40.7% max 44.1% busiest core 47.6%; clock adjusted 0.175 ms, VM paused 1.0 s by the RTC, -0.001 s by internet time
+
+== done. results: /home/mihnea/virtual-ied/virtual-protections-wan/multipath/mp_sweep_20261116_223240_pathb.csv ==
+== path B: t_trip per condition (paper reference 18.3 ms, budget 20 ms) ==
+  baseline  qos=on: n=10 mean=18.28 min=18.21 max=18.38 ms, above 20 ms: 0, no trip: 0, EF drops: 0, BFD flaps on the selected tunnel: 0
+  load140   qos=on: n=10 mean=18.27 min=18.16 max=18.36 ms, above 20 ms: 0, no trip: 0, EF drops: 0, BFD flaps on the selected tunnel: 0

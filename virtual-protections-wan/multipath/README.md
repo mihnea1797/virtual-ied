@@ -27,6 +27,7 @@ vmu1-3, load-src -> ovs-a ==(path A: r1a - r2a)== ovs-b -> vied
 | `mp_sweep.py` | driver: the paper driver's measurement code + path pin + extended read-back |
 | `mp_accept_checks.py` | acceptance tests 3 and 4: `capture` (outer DSCP on the core link), `bfd-cut` (BFD while a core link is cut) |
 | `paper_control.py` | the acceptance sequence on the PAPER lab, with the paper driver's own code: a same-day control |
+| `stall_watch.py` | notes every moment a CPU of the VM stops running for more than 12 ms; light enough to run beside a measurement |
 | `tests/test_mp_checks.py` | self-check of the read-back parsers (no lab needed) |
 | `test-results/` | kept results; fresh runs write `mp_sweep_<stamp>_path<x>.csv` here, untracked |
 

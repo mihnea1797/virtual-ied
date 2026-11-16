@@ -1,0 +1,131 @@
+== paper_control 20261116_215826: paper lab, 3 R-SV streams, EF, no background + 24M, 30s/condition, 10 reps ==
+[setup] clock: moved +0.009 ms against the raw clock in 2 s; host RTC - system clock = 0.9 s; internet time - system clock = -0.005 s
+[setup] link_bw=30 Mb/s (HTB read-back), EF guarantee=20 Mb/s (EF class rate, all hops), netem=5.0 ms one-way over 2 hops (2.5+2.5)
+[setup] waiting for all streams at the subscriber ...
+  [guard] clab-vied-lab-vmu1/config.json: 1 live publisher @ 3873 pps (udp/102)
+  [guard] clab-vied-lab-vmu2/config-vmu2.json: 1 live publisher @ 3877 pps (udp/103)
+  [guard] clab-vied-lab-vmu3/config-vmu3.json: 1 live publisher @ 3874 pps (udp/104)
+[setup] ping RTT vmu1->vied: 10.12 ms; EF mode work-conserving (ceil 30 Mb/s)
+---- warm-up (discarded: post-deploy settling) ----
+  [warmup qos=on bg=none rep=0] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=14 jmax=11.646ms dark=0 owd=6.02/36ms trip=18.218
+  [warmup qos=on bg=none rep=0] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=12 jmax=6.955ms dark=0 owd=6.02/21ms trip=18.218
+  [warmup qos=on bg=none rep=0] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=15 jmax=6.748ms dark=0 owd=6.02/26ms trip=18.218
+  [warmup qos=on bg=none rep=0] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=111 backlog_max=63p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [warmup rep=0] clock adjusted 0.768 ms, VM paused -0.2 s by the RTC, -0.004 s by internet time; host CPU over the whole condition mean 34.7% max 42.5% busiest core 44.9%
+  [warmup qos=on bg=24M rep=0] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=10 jmax=2.186ms dark=0 owd=6.15/10ms trip=18.239
+  [warmup qos=on bg=24M rep=0] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=10 jmax=2.744ms dark=0 owd=6.04/11ms trip=18.239
+  [warmup qos=on bg=24M rep=0] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=8 jmax=2.201ms dark=0 owd=6.02/10ms trip=18.239
+  [warmup qos=on bg=24M rep=0] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=15 backlog_max=64p, BE class drops=0, bg=11.36 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [warmup rep=0] clock adjusted 0.567 ms, VM paused 0.2 s by the RTC, 0.005 s by internet time; host CPU over the whole condition mean 28.2% max 41.8% busiest core 43.3%
+---- repetition 1/10 ----
+  [baseline qos=on bg=none rep=1] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=3 jmax=2.062ms dark=0 owd=6.01/9ms trip=18.211
+  [baseline qos=on bg=none rep=1] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=4 jmax=3.747ms dark=0 owd=6.21/10ms trip=18.211
+  [baseline qos=on bg=none rep=1] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=5 jmax=2.518ms dark=0 owd=6.2/10ms trip=18.211
+  [baseline qos=on bg=none rep=1] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=134 backlog_max=61p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=1] clock adjusted 0.378 ms, VM paused -0.1 s by the RTC, 0.002 s by internet time; host CPU over the whole condition mean 32.9% max 43.3% busiest core 44.6%
+  [load24M qos=on bg=24M rep=1] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=13 jmax=3.596ms dark=0 owd=6.01/10ms trip=18.204
+  [load24M qos=on bg=24M rep=1] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=4 jmax=3.455ms dark=0 owd=6.01/10ms trip=18.204
+  [load24M qos=on bg=24M rep=1] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=15 jmax=2.925ms dark=0 owd=6.02/9ms trip=18.204
+  [load24M qos=on bg=24M rep=1] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=4 backlog_max=62p, BE class drops=0, bg=11.37 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=1] clock adjusted -1.721 ms, VM paused 0.2 s by the RTC, 0.0 s by internet time; host CPU over the whole condition mean 31.9% max 42.2% busiest core 45.1%
+---- repetition 2/10 ----
+  [baseline qos=on bg=none rep=2] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=8 jmax=2.473ms dark=0 owd=6.0/11ms trip=18.31
+  [baseline qos=on bg=none rep=2] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=3 jmax=2.89ms dark=0 owd=6.0/11ms trip=18.31
+  [baseline qos=on bg=none rep=2] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=8 jmax=2.266ms dark=0 owd=6.01/9ms trip=18.31
+  [baseline qos=on bg=none rep=2] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=45 backlog_max=63p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=2] clock adjusted -0.166 ms, VM paused -0.2 s by the RTC, -0.006 s by internet time; host CPU over the whole condition mean 36.5% max 45.0% busiest core 48.0%
+  [load24M qos=on bg=24M rep=2] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=3 jmax=5.685ms dark=0 owd=6.02/13ms trip=18.306
+  [load24M qos=on bg=24M rep=2] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=5 jmax=1.936ms dark=0 owd=6.04/13ms trip=18.306
+  [load24M qos=on bg=24M rep=2] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=6 jmax=5.651ms dark=0 owd=6.03/13ms trip=18.306
+  [load24M qos=on bg=24M rep=2] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=24 backlog_max=63p, BE class drops=0, bg=11.37 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=2] clock adjusted -0.099 ms, VM paused 0.2 s by the RTC, 0.0 s by internet time; host CPU over the whole condition mean 31.9% max 42.6% busiest core 45.0%
+---- repetition 3/10 ----
+  [baseline qos=on bg=none rep=3] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=6 jmax=2.11ms dark=0 owd=6.11/10ms trip=18.227
+  [baseline qos=on bg=none rep=3] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=3 jmax=1.777ms dark=0 owd=6.16/9ms trip=18.227
+  [baseline qos=on bg=none rep=3] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=4 jmax=2.164ms dark=0 owd=6.02/9ms trip=18.227
+  [baseline qos=on bg=none rep=3] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=43 backlog_max=64p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=3] clock adjusted -0.047 ms, VM paused -0.1 s by the RTC, -0.002 s by internet time; host CPU over the whole condition mean 32.1% max 43.0% busiest core 47.3%
+  [load24M qos=on bg=24M rep=3] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=21 jmax=3.19ms dark=0 owd=6.14/14ms trip=18.233
+  [load24M qos=on bg=24M rep=3] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=4 jmax=2.658ms dark=0 owd=6.01/11ms trip=18.233
+  [load24M qos=on bg=24M rep=3] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=5 jmax=2.443ms dark=0 owd=6.19/11ms trip=18.233
+  [load24M qos=on bg=24M rep=3] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=33 backlog_max=64p, BE class drops=0, bg=11.37 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=3] clock adjusted 0.051 ms, VM paused -0.8 s by the RTC, 0.0 s by internet time; host CPU over the whole condition mean 34.0% max 43.3% busiest core 44.7%
+---- repetition 4/10 ----
+  [baseline qos=on bg=none rep=4] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=0 jmax=2.91ms dark=0 owd=6.0/9ms trip=18.237
+  [baseline qos=on bg=none rep=4] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=7 jmax=2.89ms dark=0 owd=6.02/10ms trip=18.237
+  [baseline qos=on bg=none rep=4] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=6 jmax=2.868ms dark=0 owd=6.0/9ms trip=18.237
+  [baseline qos=on bg=none rep=4] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=104 backlog_max=63p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=4] clock adjusted 0.302 ms, VM paused 0.8 s by the RTC, -0.003 s by internet time; host CPU over the whole condition mean 25.7% max 37.8% busiest core 40.7%
+  [load24M qos=on bg=24M rep=4] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=9 jmax=4.411ms dark=0 owd=6.03/11ms trip=18.277
+  [load24M qos=on bg=24M rep=4] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=19 jmax=3.428ms dark=0 owd=6.02/11ms trip=18.277
+  [load24M qos=on bg=24M rep=4] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=4 jmax=2.816ms dark=0 owd=6.1/13ms trip=18.277
+  [load24M qos=on bg=24M rep=4] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=24 backlog_max=70p, BE class drops=0, bg=11.37 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=4] clock adjusted 0.145 ms, VM paused -0.8 s by the RTC, 0.006 s by internet time; host CPU over the whole condition mean 29.6% max 39.8% busiest core 42.0%
+---- repetition 5/10 ----
+  [baseline qos=on bg=none rep=5] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=0 jmax=2.422ms dark=0 owd=6.02/10ms trip=18.226
+  [baseline qos=on bg=none rep=5] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=11 jmax=2.931ms dark=0 owd=6.06/10ms trip=18.226
+  [baseline qos=on bg=none rep=5] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=3 jmax=2.921ms dark=0 owd=6.01/9ms trip=18.226
+  [baseline qos=on bg=none rep=5] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=180 backlog_max=61p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=5] clock adjusted 0.071 ms, VM paused -0.1 s by the RTC, -0.003 s by internet time; host CPU over the whole condition mean 20.7% max 33.3% busiest core 37.5%
+  [load24M qos=on bg=24M rep=5] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=20 jmax=2.753ms dark=0 owd=6.19/10ms trip=18.204
+  [load24M qos=on bg=24M rep=5] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=9 jmax=3.773ms dark=0 owd=6.06/10ms trip=18.204
+  [load24M qos=on bg=24M rep=5] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=9 jmax=2.869ms dark=0 owd=6.19/11ms trip=18.204
+  [load24M qos=on bg=24M rep=5] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=13 backlog_max=61p, BE class drops=0, bg=11.38 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=5] clock adjusted 0.209 ms, VM paused 0.2 s by the RTC, -0.0 s by internet time; host CPU over the whole condition mean 27.2% max 38.3% busiest core 43.2%
+---- repetition 6/10 ----
+  [baseline qos=on bg=none rep=6] appid=16384 rate=4000.1 sa/s lost=0 (0.0%) reord=1 jmax=2.073ms dark=0 owd=6.03/9ms trip=18.324
+  [baseline qos=on bg=none rep=6] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=5 jmax=2.178ms dark=0 owd=6.01/8ms trip=18.324
+  [baseline qos=on bg=none rep=6] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=8 jmax=2.05ms dark=0 owd=6.06/9ms trip=18.324
+  [baseline qos=on bg=none rep=6] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=59 backlog_max=62p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=6] clock adjusted 0.162 ms, VM paused -0.2 s by the RTC, 0.003 s by internet time; host CPU over the whole condition mean 5.6% max 21.4% busiest core 23.9%
+  [load24M qos=on bg=24M rep=6] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=6 jmax=3.248ms dark=0 owd=6.04/12ms trip=18.269
+  [load24M qos=on bg=24M rep=6] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=4 jmax=3.227ms dark=0 owd=6.02/13ms trip=18.269
+  [load24M qos=on bg=24M rep=6] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=7 jmax=3.325ms dark=0 owd=6.08/15ms trip=18.269
+  [load24M qos=on bg=24M rep=6] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=10 backlog_max=61p, BE class drops=0, bg=11.37 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=6] clock adjusted 0.137 ms, VM paused 0.3 s by the RTC, -0.002 s by internet time; host CPU over the whole condition mean 20.9% max 33.6% busiest core 37.8%
+---- repetition 7/10 ----
+  [baseline qos=on bg=none rep=7] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=4 jmax=1.82ms dark=0 owd=6.21/10ms trip=18.229
+  [baseline qos=on bg=none rep=7] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=8 jmax=1.875ms dark=0 owd=6.06/9ms trip=18.229
+  [baseline qos=on bg=none rep=7] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=8 jmax=2.103ms dark=0 owd=6.13/10ms trip=18.229
+  [baseline qos=on bg=none rep=7] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=66 backlog_max=62p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=7] clock adjusted 0.142 ms, VM paused -0.2 s by the RTC, 0.001 s by internet time; host CPU over the whole condition mean 34.0% max 42.8% busiest core 45.3%
+  [load24M qos=on bg=24M rep=7] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=10 jmax=4.201ms dark=0 owd=6.05/10ms trip=18.271
+  [load24M qos=on bg=24M rep=7] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=16 jmax=3.775ms dark=0 owd=6.09/11ms trip=18.271
+  [load24M qos=on bg=24M rep=7] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=6 jmax=1.871ms dark=0 owd=6.2/11ms trip=18.271
+  [load24M qos=on bg=24M rep=7] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=19 backlog_max=65p, BE class drops=0, bg=11.37 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=7] clock adjusted -0.040 ms, VM paused 0.2 s by the RTC, -0.002 s by internet time; host CPU over the whole condition mean 25.0% max 44.3% busiest core 46.3%
+---- repetition 8/10 ----
+  [baseline qos=on bg=none rep=8] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=2 jmax=2.915ms dark=0 owd=6.22/8ms trip=18.15
+  [baseline qos=on bg=none rep=8] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=6 jmax=3.766ms dark=0 owd=6.21/10ms trip=18.15
+  [baseline qos=on bg=none rep=8] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=6 jmax=1.951ms dark=0 owd=6.19/9ms trip=18.15
+  [baseline qos=on bg=none rep=8] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=144 backlog_max=62p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=8] clock adjusted -0.418 ms, VM paused -0.2 s by the RTC, -0.006 s by internet time; host CPU over the whole condition mean 44.5% max 50.7% busiest core 53.3%
+  [load24M qos=on bg=24M rep=8] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=3 jmax=1.956ms dark=0 owd=6.05/10ms trip=18.284
+  [load24M qos=on bg=24M rep=8] appid=16385 rate=4000.2 sa/s lost=0 (0.0%) reord=2 jmax=1.908ms dark=0 owd=6.13/9ms trip=18.284
+  [load24M qos=on bg=24M rep=8] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=7 jmax=1.895ms dark=0 owd=6.04/9ms trip=18.284
+  [load24M qos=on bg=24M rep=8] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=17 backlog_max=65p, BE class drops=0, bg=11.38 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=8] clock adjusted -0.025 ms, VM paused 0.2 s by the RTC, 0.002 s by internet time; host CPU over the whole condition mean 18.2% max 50.7% busiest core 51.9%
+---- repetition 9/10 ----
+  [baseline qos=on bg=none rep=9] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=3 jmax=2.596ms dark=0 owd=6.23/8ms trip=18.246
+  [baseline qos=on bg=none rep=9] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=8 jmax=2.494ms dark=0 owd=6.04/10ms trip=18.246
+  [baseline qos=on bg=none rep=9] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=6 jmax=2.356ms dark=0 owd=6.0/9ms trip=18.246
+  [baseline qos=on bg=none rep=9] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=73 backlog_max=61p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=9] clock adjusted 0.131 ms, VM paused -0.1 s by the RTC, -0.0 s by internet time; host CPU over the whole condition mean 42.7% max 49.8% busiest core 53.8%
+  [load24M qos=on bg=24M rep=9] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=12 jmax=2.638ms dark=0 owd=6.04/12ms trip=18.31
+  [load24M qos=on bg=24M rep=9] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=9 jmax=2.951ms dark=0 owd=6.02/12ms trip=18.31
+  [load24M qos=on bg=24M rep=9] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=9 jmax=2.66ms dark=0 owd=6.19/13ms trip=18.31
+  [load24M qos=on bg=24M rep=9] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=24 backlog_max=62p, BE class drops=0, bg=11.38 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=9] clock adjusted 0.157 ms, VM paused 0.2 s by the RTC, -0.004 s by internet time; host CPU over the whole condition mean 31.3% max 47.3% busiest core 47.9%
+---- repetition 10/10 ----
+  [baseline qos=on bg=none rep=10] appid=16384 rate=4000.1 sa/s lost=0 (0.0%) reord=6 jmax=2.372ms dark=0 owd=6.07/10ms trip=18.235
+  [baseline qos=on bg=none rep=10] appid=16385 rate=4000.1 sa/s lost=0 (0.0%) reord=10 jmax=2.62ms dark=0 owd=6.14/9ms trip=18.235
+  [baseline qos=on bg=none rep=10] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=7 jmax=1.93ms dark=0 owd=6.17/8ms trip=18.235
+  [baseline qos=on bg=none rep=10] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=70 backlog_max=61p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=10] clock adjusted 0.148 ms, VM paused -0.2 s by the RTC, -0.001 s by internet time; host CPU over the whole condition mean 35.4% max 44.7% busiest core 46.8%
+  [load24M qos=on bg=24M rep=10] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=8 jmax=3.452ms dark=0 owd=6.02/14ms trip=18.232
+  [load24M qos=on bg=24M rep=10] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=3 jmax=4.446ms dark=0 owd=6.18/13ms trip=18.232
+  [load24M qos=on bg=24M rep=10] appid=16386 rate=3999.9 sa/s lost=0 (0.0%) reord=11 jmax=2.9ms dark=0 owd=6.21/13ms trip=18.232
+  [load24M qos=on bg=24M rep=10] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=28 backlog_max=62p, BE class drops=0, bg=11.37 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=10] clock adjusted 0.159 ms, VM paused -0.8 s by the RTC, 0.0 s by internet time; host CPU over the whole condition mean 38.2% max 47.5% busiest core 50.0%
+
+== done. results: /home/mihnea/virtual-ied/virtual-protections-wan/multipath/paper_control_20261116_215826.csv (side file paper_control_20261116_215826_side.csv) ==
