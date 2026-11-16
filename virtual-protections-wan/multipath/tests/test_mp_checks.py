@@ -148,7 +148,19 @@ adj, pause = m.clock_delta((100.0, 50.0, -0.4), (132.0, 82.0, 1422.3))          
 assert abs(adj) < 1e-6 and "paused" in m.clock_verdict(adj, pause), (adj, pause)
 assert m.clock_delta((1.0, 1.0, None), (2.0, 2.0, None)) == (0.0, None)                  # no RTC: only the rate check
 assert m.clock_verdict(0.2, None) is None and m.clock_verdict(-6.0, None) is not None
-assert "clock_adj_ms" in m.COLS and "vm_pause_s" in m.COLS
+assert "clock_adj_ms" in m.COLS and "vm_pause_s" in m.COLS and "ntp_step_s" in m.COLS
+# an outside clock: the second pause of 2026-11-16 stopped the emulated RTC too (RTC check blind)
+assert "internet time" in m.clock_verdict(0.2, -0.1, 188.85) and m.clock_verdict(0.2, -0.1, 0.04) is None
+assert m.clock_verdict(0.2, -0.1, None) is None                                          # no server answered: not a verdict
+import struct
+def reply(t2, t3, stratum=2):                                                            # a minimal SNTP server packet
+    def ts(t):
+        return struct.pack("!II", int(t) + 2208988800, int((t % 1) * 2 ** 32))
+    return bytes([0x24, stratum]) + bytes(30) + ts(t2) + ts(t3)
+off = m.sntp_offset(reply(1000.530, 1000.531), t1=1000.000, t4=1000.061)                 # server 0.5 s ahead, 60 ms round trip
+assert abs(off - 0.500) < 1e-3, off
+assert m.sntp_offset(reply(1.0, 1.0, stratum=0), 0.0, 0.1) is None                       # kiss-o'-death
+assert m.sntp_offset(b"short", 0.0, 0.1) is None
 
 # ---- acceptance summary: one t_trip per window, however many stream rows it has ----
 def row(cond, rep, trip, drops=0, flaps=0):

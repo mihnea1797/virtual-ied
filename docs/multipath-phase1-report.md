@@ -7,7 +7,10 @@
 
 **Status: all five acceptance tests pass.** One finding is outside those tests and open: in 4 of
 the 40 accepted windows the streams show short delay spikes with gaps above 16 ms, which none of
-the paper lab's kept EF runs show (see "Delay spikes").
+the paper lab's kept EF runs show. A same-day control on the paper lab showed the same kind of
+spike in one of its two valid windows before the VM lost time again and stopped it, so the
+spikes look like the host on this day rather than the two-path lab — on thin evidence (see
+"Delay spikes").
 
 ## What was built
 
@@ -129,10 +132,28 @@ columns show something those tests do not cover:
   20:49:24 four seconds after it). None was logged during the path A runs, which have spikes too.
   The kernel log only goes back to today's boot, so whether the paper lab ever produced that
   message is unknown.
-- Not known: whether this is the two-path lab (more per-packet kernel work: encapsulation and
-  one more hop) or the host as it is today. The paper lab was not run today.
-- Why it matters: phase 2 measures outages of exactly this size. A same-day run of the paper lab
-  with the same procedure would separate "the lab" from "the day"; that should come first.
+- Why it matters: phase 2 measures outages of exactly this size.
+
+**Same-day control on the paper lab** (`paper_control_20261116_partial.csv`, `_side.csv`,
+`.log.txt`). `multipath/paper_control.py` runs the acceptance sequence on the paper lab with the
+paper driver's own setup and `run_condition()`. The run stopped itself in its third measured
+window, because the VM had lost time again (next section). What it measured before that:
+
+| Paper lab, 2026-11-16 | t_trip | Gaps above 16 ms | Worst one-way delay | Reordered samples |
+|---|---|---|---|---|
+| no background, repetition 1 | 18.21 ms | 0 | 9 ms | 8 |
+| 140 % level (24M), repetition 1 | 18.32 ms | 4 | 55 ms | 165 |
+
+- One of the paper lab's two valid windows has the same kind of spike, and the kernel printed
+  `htb: too many events!` at the start of that window (21:10:38).
+- So the spikes are not specific to the two-path lab: the unchanged paper lab, which had none in
+  70 kept windows on its campaign days, produced one within two windows today.
+- This is two windows, not a campaign. It makes "the host on this day" the likely cause and
+  "the two-path lab" unlikely as the only cause; it does not measure how often either lab spikes.
+- The same host paused the whole VM twice today. Shorter stalls of the same kind (tens of
+  milliseconds) would look exactly like these spikes from inside, and nothing inside the VM can
+  tell them apart from a busy kernel. That is a hypothesis, not a measurement.
+- Next: repeat the control in full once the host leaves the VM alone, on both labs back to back.
 
 ## The VM pause
 
@@ -148,9 +169,17 @@ acceptance result: the VM was paused for about 23.7 minutes in the middle of it.
   hardware clock, measured); the last four windows, including the 21.46 ms trip, fall wholly or
   partly in that state.
 - The owner stepped the clock (`sudo chronyc makestep`) before the two accepted runs.
-- The driver now checks this. Before a run it aborts if the clock is being slewed or is seconds
-  away from the host RTC. Per window it records `clock_adj_ms` and `vm_pause_s`, and stops the run
-  without writing the row if either shows a slew or a pause.
+- **It happened again.** Between about 21:06:48 and 21:07:52, while the labs were being switched
+  for the control run, the VM lost another 188.85 s. This time the emulated RTC lost them too, so
+  the RTC comparison saw nothing; the run stopped three minutes later, when the daemon began to
+  slew the clock inside a window. The two control windows before that were measured on an
+  unsynchronised but unslewed clock (0.2 ms adjustment each).
+- The driver checks three things. Before a run it aborts if the clock is being slewed, is seconds
+  away from the host RTC, or is more than 0.5 s from internet time. Per window it records
+  `clock_adj_ms`, `vm_pause_s` and `ntp_step_s` (one SNTP exchange at each end of the window,
+  added after the second pause) and stops the run without writing the row if any of them shows a
+  slew or a pause.
+- Only the host can prevent the pauses.
 
 ## What differs from the spec
 
@@ -164,10 +193,12 @@ acceptance result: the VM was paused for about 23.7 minutes in the middle of it.
 | Read-back | six items | plus MTU, HTB quanta and bursts, and the VM clock | found necessary while building |
 | Idle `controller` node, host port 8080 | — | left out | no controller in phase 1; the port would collide with the paper lab at boot |
 | Path A | one run | two runs, the first kept but not accepted | the VM pause |
+| Paper-lab control | — | `paper_control.py`, partial run | to place the delay spikes |
 
 ## Open
 
-- The delay spikes: run the paper lab today with the same procedure as a control, then decide.
+- The delay spikes: repeat the paper-lab control in full, back to back with the two-path lab, once
+  the host no longer pauses the VM.
 - The driver logs one averaged ping at setup; logging the single pings would have explained the
   23.29 ms reading on path A.
 - The paper lab's driver has no clock check; a paused VM would go unnoticed there too.

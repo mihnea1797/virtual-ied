@@ -29,7 +29,10 @@ import json
 import os
 import pathlib
 import re
+import random
 import signal
+import socket
+import struct
 import subprocess
 import sys
 import time
@@ -84,7 +87,7 @@ MP_COLS = ["path", "bg_iperf_kbps", "offered_load_pct",
            "bfd_sel_start", "bfd_sel_end", "bfd_sel_flaps", "bfd_other_start", "bfd_other_end", "bfd_other_flaps",
            "host_cpu_mean_pct", "host_cpu_max_pct", "host_core_max_pct",
            # the VM's clock during the window (see clock_read): must be ~0 ms and ~0 s
-           "clock_adj_ms", "vm_pause_s"]
+           "clock_adj_ms", "vm_pause_s", "ntp_step_s"]
 COLS = q.COLS + MP_COLS
 
 
@@ -451,7 +454,8 @@ def print_readback(rb):
           f"-> no fragmentation; a full-size host packet fits: {m['largest_host_packet_fits']}")
     ck = rb["clock"]
     print(f"[readback] 7. clock: system clock moved {ck['adj_ms_in_2s']:+.3f} ms against the raw clock in 2 s (limit {CLOCK_ADJ_MAX_MS:g}); "
-          f"host RTC - system clock = {ck['rtc_minus_system_s']} s (limit {RTC_OFFSET_MAX_S:g})")
+          f"host RTC - system clock = {ck['rtc_minus_system_s']} s (limit {RTC_OFFSET_MAX_S:g}); "
+          f"internet time - system clock = {ck['ntp_minus_system_s']} s (limit {NTP_OFFSET_MAX_S:g})")
     if "ping_rtt_ms" in rb:
         print(f"[readback] 8. ping RTT vmu1 -> vied through path {sel.upper()}: {rb['ping_rtt_ms']} ms "
               f"({rb.get('ping_note', '')}; paper single-path baseline {P['PING_RTT_REF_MS']} ms)")
@@ -465,12 +469,62 @@ def print_readback(rb):
 # HTB, netem, t_trip) is timed by that clock, so a run must not start or continue in that state.
 #   - clock_adj_ms: how far the system clock (NTP-steered) moved against CLOCK_MONOTONIC_RAW
 #     (never steered) over an interval. Normal: a fraction of a ms per window; slewing: 2500 ms.
-#   - vm_pause_s: change of (host RTC - system clock) over an interval. The emulated RTC follows
-#     the HOST's clock and keeps running while the VM is paused; 1 s resolution.
+#   - vm_pause_s: change of (host RTC - system clock) over an interval. The emulated RTC followed
+#     the HOST's clock through the first pause; 1 s resolution.
+#   - ntp_step_s: change of (internet time server - system clock) over an interval, one SNTP packet
+#     at each end. Added the same evening: the VM lost another 189 s, and that time the emulated RTC
+#     lost them too, so vm_pause_s saw nothing. An outside clock cannot be fooled that way. It is
+#     "NA" when no server answers; the other two checks still apply then.
 CLOCK_ADJ_MAX_MS = 5.0       # per interval (2 s check at setup, ~32 s window)
 VM_PAUSE_MAX_S = 1.5         # RTC has 1 s resolution: a change below this is rounding
 RTC_OFFSET_MAX_S = 5.0       # |host RTC - system clock| at setup
+NTP_STEP_MAX_S = 0.25        # per interval; one SNTP exchange over the internet is good to some tens of ms
+NTP_OFFSET_MAX_S = 0.5       # |internet time - system clock| at setup
+NTP_SERVERS = ["1.ntp.ubuntu.com", "2.ntp.ubuntu.com", "3.ntp.ubuntu.com", "4.ntp.ubuntu.com"]   # chrony's pool on this VM
 RTC_PATH = "/sys/class/rtc/rtc0/since_epoch"
+
+def sntp_offset(packet, t1, t4):
+    """Server clock minus local clock (s) out of an SNTP reply and the local send/receive times;
+    None for a short packet or a kiss-o'-death (stratum 0)."""
+    if len(packet) < 48 or packet[1] == 0:
+        return None
+    def ts(at):
+        sec, frac = struct.unpack("!II", packet[at:at + 8])
+        return sec - 2208988800 + frac / 2 ** 32          # NTP epoch 1900 -> Unix epoch
+    t2, t3 = ts(32), ts(40)                                # server receive / transmit
+    return ((t2 - t1) + (t3 - t4)) / 2
+
+def ntp_offset(timeout=1.0):
+    """Internet time minus the system clock in s: one SNTP exchange with a server of the pool chrony
+    uses (a second server is tried if the first is silent). None if neither answers. Sent from the
+    host, so it never touches the lab's links."""
+    for host in random.sample(NTP_SERVERS, k=2):
+        try:
+            addr = socket.gethostbyname(host)              # resolved before the clock is read
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sk:
+                sk.settimeout(timeout)
+                t1 = time.time()
+                sk.sendto(b"\x23" + 47 * b"\0", (addr, 123))   # LI 0, version 4, mode 3 (client)
+                packet, _ = sk.recvfrom(128)
+                t4 = time.time()
+            off = sntp_offset(packet, t1, t4)
+            if off is not None:
+                return off
+        except OSError:
+            continue
+    return None
+
+def ntp_step(off0):
+    """Change of the internet-time offset since `off0` (s) = time the system clock lost meanwhile.
+    A step above the limit is measured a second time before it is believed. None if unknown."""
+    if off0 is None:
+        return None
+    off1 = ntp_offset()
+    if off1 is not None and abs(off1 - off0) > NTP_STEP_MAX_S:
+        again = ntp_offset()
+        if again is not None:
+            off1 = again
+    return None if off1 is None else off1 - off0
 
 def clock_read():
     """(CLOCK_MONOTONIC, CLOCK_MONOTONIC_RAW, host RTC - system clock in s or None if no RTC)."""
@@ -488,13 +542,15 @@ def clock_delta(c0, c1):
     pause = (c1[2] - c0[2]) if (c0[2] is not None and c1[2] is not None) else None
     return adj_ms, pause
 
-def clock_verdict(adj_ms, pause_s):
+def clock_verdict(adj_ms, pause_s, ntp_step_s=None):
     """Why an interval is unusable, or None."""
     if abs(adj_ms) > CLOCK_ADJ_MAX_MS:
         return (f"the system clock was adjusted by {adj_ms:+.1f} ms against the raw clock (limit {CLOCK_ADJ_MAX_MS:g} ms): "
                 f"it is being slewed, so every timer and rate in the lab is off")
     if pause_s is not None and abs(pause_s) > VM_PAUSE_MAX_S:
         return f"the VM did not run for about {pause_s:.0f} s (host RTC against the system clock): it was paused"
+    if ntp_step_s is not None and abs(ntp_step_s) > NTP_STEP_MAX_S:
+        return f"the system clock lost {ntp_step_s:+.2f} s against internet time (limit {NTP_STEP_MAX_S:g} s): the VM was paused"
     return None
 
 def clock_readback():
@@ -504,11 +560,16 @@ def clock_readback():
     time.sleep(2)
     c1 = clock_read()
     adj_ms, _ = clock_delta(c0, c1)
-    res = {"adj_ms_in_2s": round(adj_ms, 3), "rtc_minus_system_s": None if c1[2] is None else round(c1[2], 1)}
+    ntp = ntp_offset()
+    res = {"adj_ms_in_2s": round(adj_ms, 3), "rtc_minus_system_s": None if c1[2] is None else round(c1[2], 1),
+           "ntp_minus_system_s": None if ntp is None else round(ntp, 3)}
     fix = "fix: `chronyc makestep` as root, then check `chronyc tracking`"
     why = clock_verdict(adj_ms, None)
     if why:
         q.die(f"clock check: {why} — {fix}")
+    if ntp is not None and abs(ntp) > NTP_OFFSET_MAX_S:
+        q.die(f"clock check: the system clock is {ntp:+.1f} s from internet time (limit {NTP_OFFSET_MAX_S:g} s) — "
+              f"the VM was paused and has not been re-synchronised; {fix}")
     if c1[2] is not None and abs(c1[2]) > RTC_OFFSET_MAX_S:
         q.die(f"clock check: the system clock is {c1[2]:+.0f} s from the host RTC (limit {RTC_OFFSET_MAX_S:g} s) — "
               f"the VM was paused and has not been re-synchronised; {fix}")
@@ -557,7 +618,7 @@ def run_condition(cond, qos, bg_kbps, rep, writer, csvf, globals_, path):
     q.publishers_rearm()
     time.sleep(q.SETTLE_S)
 
-    k0 = clock_read()                                                  # + before the capture starts, well ahead of t0
+    k0, n0 = clock_read(), ntp_offset()                                # + before the capture starts, well ahead of t0
     q.rgoose_capture_start()
     bfd0 = bfd_readback()                                              # +
     off0 = q.htb_class_stats(OVS_A, other_dev, "1:fffe")["pkts"]       # +
@@ -591,7 +652,8 @@ def run_condition(cond, qos, bg_kbps, rep, writer, csvf, globals_, path):
     if bg_kbps:
         bg_meas, bg_loss = q.bg_stop()
     clock_adj_ms, vm_pause_s = clock_delta(k0, clock_read())           # +
-    why = clock_verdict(clock_adj_ms, vm_pause_s)
+    ntp_step_s = ntp_step(n0)
+    why = clock_verdict(clock_adj_ms, vm_pause_s, ntp_step_s)
     if why:                                                            # no row is written for such a window
         q.die(f"{cond} path={path} qos={qos} rep={rep}: {why}. Window discarded, run stopped "
               f"(t_trip would have been {trip}) — re-synchronise the clock (`chronyc makestep` as root) and run again")
@@ -632,6 +694,7 @@ def run_condition(cond, qos, bg_kbps, rep, writer, csvf, globals_, path):
         "host_core_max_pct": round(max(c for _, c in cpu_1s), 1),
         "clock_adj_ms": round(clock_adj_ms, 3),
         "vm_pause_s": "NA" if vm_pause_s is None else round(vm_pause_s, 1),
+        "ntp_step_s": "NA" if ntp_step_s is None else round(ntp_step_s, 3),
     }
     for appid, m in sorted(win.items()):
         row = {"cond": cond, "qos": qos, "bg_mbps": round(bg_kbps / 1000.0, 3), "appid": appid, "rep": rep,
@@ -651,7 +714,8 @@ def run_condition(cond, qos, bg_kbps, rep, writer, csvf, globals_, path):
           f"(flaps {extra['bfd_sel_flaps']}), {other_tun} {extra['bfd_other_start']}->{extra['bfd_other_end']} (flaps {extra['bfd_other_flaps']}); "
           f"other path carried {extra['other_path_pkts']} pkt; host CPU mean {extra['host_cpu_mean_pct']}% "
           f"max {extra['host_cpu_max_pct']}% busiest core {extra['host_core_max_pct']}%; "
-          f"clock adjusted {extra['clock_adj_ms']} ms, VM paused {extra['vm_pause_s']} s")
+          f"clock adjusted {extra['clock_adj_ms']} ms, VM paused {extra['vm_pause_s']} s by the RTC, "
+          f"{extra['ntp_step_s']} s by internet time")
 
 
 # ----------------------------- summary -----------------------------

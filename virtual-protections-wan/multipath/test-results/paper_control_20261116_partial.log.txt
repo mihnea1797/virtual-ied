@@ -1,0 +1,36 @@
+== paper_control 20261116_210732: paper lab, 3 R-SV streams, EF, no background + 24M, 30s/condition, 10 reps ==
+[setup] clock: moved +0.010 ms against the raw clock in 2 s; host RTC - system clock = 0.3 s
+[setup] link_bw=30 Mb/s (HTB read-back), EF guarantee=20 Mb/s (EF class rate, all hops), netem=5.0 ms one-way over 2 hops (2.5+2.5)
+[setup] waiting for all streams at the subscriber ...
+  [guard] clab-vied-lab-vmu1/config.json: 1 live publisher @ 3880 pps (udp/102)
+  [guard] clab-vied-lab-vmu2/config-vmu2.json: 1 live publisher @ 3877 pps (udp/103)
+  [guard] clab-vied-lab-vmu3/config-vmu3.json: 1 live publisher @ 3877 pps (udp/104)
+[setup] ping RTT vmu1->vied: 10.134 ms; EF mode work-conserving (ceil 30 Mb/s)
+---- warm-up (discarded: post-deploy settling) ----
+  [warmup qos=on bg=none rep=0] appid=16384 rate=4000.1 sa/s lost=0 (0.0%) reord=6 jmax=2.024ms dark=0 owd=6.21/10ms trip=18.204
+  [warmup qos=on bg=none rep=0] appid=16385 rate=4000.1 sa/s lost=0 (0.0%) reord=7 jmax=2.736ms dark=0 owd=6.13/10ms trip=18.204
+  [warmup qos=on bg=none rep=0] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=4 jmax=2.444ms dark=0 owd=6.06/10ms trip=18.204
+  [warmup qos=on bg=none rep=0] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=44 backlog_max=63p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [warmup rep=0] clock adjusted 0.206 ms, VM paused -0.1 s; host CPU over the whole condition mean 38.2% max 46.4% busiest core 47.5%
+  [warmup qos=on bg=24M rep=0] appid=16384 rate=3999.9 sa/s lost=0 (0.0%) reord=5 jmax=4.518ms dark=0 owd=6.06/14ms trip=18.256
+  [warmup qos=on bg=24M rep=0] appid=16385 rate=3999.9 sa/s lost=0 (0.0%) reord=10 jmax=3.62ms dark=0 owd=6.03/16ms trip=18.256
+  [warmup qos=on bg=24M rep=0] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=14 jmax=3.586ms dark=0 owd=6.02/16ms trip=18.256
+  [warmup qos=on bg=24M rep=0] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.93 Mb/s drops=0+0+0 overlimits=37 backlog_max=72p, BE class drops=0, bg=11.37 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [warmup rep=0] clock adjusted 0.220 ms, VM paused 0.3 s; host CPU over the whole condition mean 29.0% max 43.8% busiest core 46.8%
+---- repetition 1/10 ----
+  [baseline qos=on bg=none rep=1] appid=16384 rate=4000.1 sa/s lost=0 (0.0%) reord=4 jmax=2.079ms dark=0 owd=6.0/9ms trip=18.212
+  [baseline qos=on bg=none rep=1] appid=16385 rate=4000.1 sa/s lost=0 (0.0%) reord=1 jmax=3.159ms dark=0 owd=6.01/9ms trip=18.212
+  [baseline qos=on bg=none rep=1] appid=16386 rate=4000.1 sa/s lost=0 (0.0%) reord=3 jmax=1.942ms dark=0 owd=6.17/9ms trip=18.212
+  [baseline qos=on bg=none rep=1] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=91 backlog_max=64p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [baseline rep=1] clock adjusted 0.206 ms, VM paused -0.1 s; host CPU over the whole condition mean 28.9% max 40.3% busiest core 43.7%
+  [load24M qos=on bg=24M rep=1] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=54 jmax=20.79ms dark=1 owd=6.17/54ms trip=18.319
+  [load24M qos=on bg=24M rep=1] appid=16385 rate=4000.1 sa/s lost=0 (0.0%) reord=51 jmax=16.258ms dark=1 owd=6.18/35ms trip=18.319
+  [load24M qos=on bg=24M rep=1] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=60 jmax=26.187ms dark=2 owd=6.17/55ms trip=18.319
+  [load24M qos=on bg=24M rep=1] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=105 backlog_max=61p, BE class drops=0, bg=11.37 Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+  [load24M rep=1] clock adjusted 0.220 ms, VM paused 0.3 s; host CPU over the whole condition mean 29.5% max 41.0% busiest core 43.2%
+---- repetition 2/10 ----
+  [baseline qos=on bg=none rep=2] appid=16384 rate=4000.0 sa/s lost=0 (0.0%) reord=2 jmax=2.079ms dark=0 owd=6.14/10ms trip=18.29
+  [baseline qos=on bg=none rep=2] appid=16385 rate=4000.0 sa/s lost=0 (0.0%) reord=8 jmax=1.856ms dark=0 owd=6.01/10ms trip=18.29
+  [baseline qos=on bg=none rep=2] appid=16386 rate=4000.0 sa/s lost=0 (0.0%) reord=10 jmax=2.622ms dark=0 owd=6.2/9ms trip=18.29
+  [baseline qos=on bg=none rep=2] rsv=19.01/19.01 Mb/s nominal/delivered, EF class sent=18.92 Mb/s drops=0+0+0 overlimits=167 backlog_max=62p, BE class drops=0, bg=None Mb/s loss=None%, subscriber rcvbuf drops=0, R-GOOSE@vMU1=1
+[ABORT] baseline rep=2: the system clock was adjusted by +1162.7 ms against the raw clock (limit 5 ms): it is being slewed, so every timer and rate in the lab is off. The rows just written for this window are NOT valid — stop and re-synchronise the clock

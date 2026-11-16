@@ -1,0 +1,3 @@
+cond,rep,clock_adj_ms,vm_pause_s,host_cpu_mean_pct,host_cpu_max_pct,host_core_max_pct
+baseline,1,0.206,-0.1,28.9,40.3,43.7
+load24M,1,0.22,0.3,29.5,41.0,43.2

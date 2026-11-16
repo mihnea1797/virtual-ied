@@ -110,12 +110,16 @@ and commands `virtual-protections-wan/multipath/README.md`. Every parameter is i
   background and 18.27 ms at the 140 % level, path B 18.24 and 18.31 ms; none above 20 ms, 0 EF
   drops; all R-SV carries DSCP 46 on the outer header; BFD goes down only on the cut path.
   Open: 4 of those 40 windows have gaps above 16 ms (short delay spikes), 0 of 70 in the paper
-  lab's kept EF runs; not yet known whether that is this lab or the host on that day.
-- **The VM can be paused by its host mid-run.** Nothing inside shows it directly; afterwards chrony
-  runs the clock 8.3 % fast for hours, and every timer and rate in the lab follows that clock.
-  `mp_sweep.py` checks for it before and during a run; `qos_sweep.py` does not. Check
-  `chronyc tracking` ("System time" must be near 0) before any timing run; the fix is
-  `sudo chronyc makestep`.
+  lab's kept EF runs. A same-day control on the paper lab (`multipath/paper_control.py`) showed
+  the same in 1 of its 2 valid windows before the VM lost time again: likely the host that day,
+  not this lab. The full control is still to be run.
+- **The VM can be paused by its host mid-run** (twice on 2026-11-16: 23.7 min and 189 s). Nothing
+  inside shows it directly; afterwards chrony runs the clock 8.3 % fast until the offset is gone,
+  and every timer and rate in the lab follows that clock. `mp_sweep.py` and `paper_control.py`
+  check for it before and during a run (clock rate, host RTC, internet time); `qos_sweep.py` does
+  not. Check `chronyc tracking` ("System time" must be near 0) before any timing run; the fix is
+  `sudo chronyc makestep`. The emulated RTC is not a reliable witness: it kept time through the
+  first pause and lost the second.
 
 ## Known caveats
 
