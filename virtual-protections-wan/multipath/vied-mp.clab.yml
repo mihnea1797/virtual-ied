@@ -1,0 +1,100 @@
+# vied-mp — the paper lab (../vied-lab.clab.yml) with two disjoint WAN paths.
+#
+#   vmu1-3, load-src -> ovs-a ==(path A: r1a - r2a)== ovs-b -> vied
+#                             ==(path B: r1b - r2b)==
+#
+# This file is only the wiring and the packages. Every address, route, MTU, rate and delay is in
+# params.env and is applied by mp-lab-up.sh, so nothing has to be kept in step between the two.
+# Images, binds and package lists are the paper lab's. Left out on purpose:
+#   - the idle `controller` node (no SDN controller in phase 1);
+#   - vmu1's host port 8080: the containers restart with the VM, and a second holder of that port
+#     would make the paper lab's own boot-time deploy fail. The driver talks to the publishers
+#     from inside their containers, so it is not needed.
+name: vied-mp
+topology:
+  nodes:
+    # ===== Site A: R-SV publishers =====
+    vmu1:
+      kind: linux
+      image: dev-container:latest
+      binds: ["/home/mihnea/virtual-ied/iec61850-lab:/home/root/iec61850-lab"]
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump tshark"
+    vmu2:
+      kind: linux
+      image: dev-container:latest
+      binds: ["/home/mihnea/virtual-ied/iec61850-lab:/home/root/iec61850-lab"]
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump"
+    vmu3:
+      kind: linux
+      image: dev-container:latest
+      binds: ["/home/mihnea/virtual-ied/iec61850-lab:/home/root/iec61850-lab"]
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump"
+
+    # ===== Site A: background traffic source =====
+    load-src:
+      kind: linux
+      image: wbitt/network-multitool:latest
+
+    # ===== Site A: access switch (EF marking, access-hop shaper, tunnel ends) =====
+    ovs-a:
+      kind: linux
+      image: dev-container:latest
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y openvswitch-switch openvswitch-common"
+
+    # ===== WAN path A: aggregation, core =====
+    r1a:
+      kind: linux
+      image: wbitt/network-multitool:latest
+    r2a:
+      kind: linux
+      image: wbitt/network-multitool:latest
+
+    # ===== WAN path B: aggregation, core =====
+    r1b:
+      kind: linux
+      image: wbitt/network-multitool:latest
+    r2b:
+      kind: linux
+      image: wbitt/network-multitool:latest
+
+    # ===== Site B: protection-site switch (tunnel ends) =====
+    ovs-b:
+      kind: linux
+      image: dev-container:latest
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y openvswitch-switch openvswitch-common"
+
+    # ===== Site B: subscriber + background sink =====
+    vied:
+      kind: linux
+      image: dev-container:latest
+      binds: ["/home/mihnea/virtual-ied:/root/virtual-merging-unit"]
+      cmd: sleep infinity
+      exec:
+        - bash -c "apt-get update && apt-get install -y libmbedtls-dev iperf3 libpcap-dev tcpdump tshark"
+
+  links:
+    # Site A hosts -> ovs-a (bridge ports eth1..eth4, as on the paper's ovs-core)
+    - endpoints: ["vmu1:eth1", "ovs-a:eth1"]
+    - endpoints: ["vmu2:eth1", "ovs-a:eth2"]
+    - endpoints: ["vmu3:eth1", "ovs-a:eth3"]
+    - endpoints: ["load-src:eth1", "ovs-a:eth4"]
+    # Path A underlay: ovs-a:eth5 and r1a/r2a:eth2 carry the forward-egress shapers
+    - endpoints: ["ovs-a:eth5", "r1a:eth1"]
+    - endpoints: ["r1a:eth2", "r2a:eth1"]
+    - endpoints: ["r2a:eth2", "ovs-b:eth1"]
+    # Path B underlay: ovs-a:eth6 and r1b/r2b:eth2 carry the forward-egress shapers
+    - endpoints: ["ovs-a:eth6", "r1b:eth1"]
+    - endpoints: ["r1b:eth2", "r2b:eth1"]
+    - endpoints: ["r2b:eth2", "ovs-b:eth2"]
+    # Site B: ovs-b -> vied (stands for the substation LAN, not shaped)
+    - endpoints: ["ovs-b:eth3", "vied:eth1"]
