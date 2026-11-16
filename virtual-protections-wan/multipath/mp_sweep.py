@@ -82,7 +82,9 @@ MP_COLS = ["path", "bg_iperf_kbps", "offered_load_pct",
            "netem_rev_hops", "other_path_netem_fwd_hops", "other_path_netem_rev_hops",
            "ef_frame_bytes", "ef_class_pkts_hops", "other_path_pkts",
            "bfd_sel_start", "bfd_sel_end", "bfd_sel_flaps", "bfd_other_start", "bfd_other_end", "bfd_other_flaps",
-           "host_cpu_mean_pct", "host_cpu_max_pct", "host_core_max_pct"]
+           "host_cpu_mean_pct", "host_cpu_max_pct", "host_core_max_pct",
+           # the VM's clock during the window (see clock_read): must be ~0 ms and ~0 s
+           "clock_adj_ms", "vm_pause_s"]
 COLS = q.COLS + MP_COLS
 
 
@@ -394,7 +396,7 @@ def full_readback(path_wanted, qos_on=True):
     """Everything the spec asks to be read from the data plane before a run. Every item is compared
     with params.env / the requested path and the run is aborted on a difference; what was read is
     returned (and printed by print_readback)."""
-    rb = {"stamp": STAMP, "shapers": shaper_readback(), "netem": netem_readback()}
+    rb = {"stamp": STAMP, "clock": clock_readback(), "shapers": shaper_readback(), "netem": netem_readback()}
     rb["path"], rb["pin"] = pin_readback(qos_on)
     if rb["path"] != path_wanted:
         q.die(f"lab is pinned to path {rb['path']}, run asked for path {path_wanted}")
@@ -447,9 +449,70 @@ def print_readback(rb):
     print(f"[readback] 6. MTU: underlay {sorted(set(m['underlay'].values()))} on {len(m['underlay'])} interfaces, "
           f"host links {sorted(set(m['host'].values()))}; largest background packet in the tunnel {m['bg_outer_ip_b']} B IP "
           f"-> no fragmentation; a full-size host packet fits: {m['largest_host_packet_fits']}")
+    ck = rb["clock"]
+    print(f"[readback] 7. clock: system clock moved {ck['adj_ms_in_2s']:+.3f} ms against the raw clock in 2 s (limit {CLOCK_ADJ_MAX_MS:g}); "
+          f"host RTC - system clock = {ck['rtc_minus_system_s']} s (limit {RTC_OFFSET_MAX_S:g})")
     if "ping_rtt_ms" in rb:
-        print(f"[readback] 7. ping RTT vmu1 -> vied through path {sel.upper()}: {rb['ping_rtt_ms']} ms "
+        print(f"[readback] 8. ping RTT vmu1 -> vied through path {sel.upper()}: {rb['ping_rtt_ms']} ms "
               f"({rb.get('ping_note', '')}; paper single-path baseline {P['PING_RTT_REF_MS']} ms)")
+
+
+# ----------------------------- the VM's clock -----------------------------
+# Added after the path A run of 2026-11-16: the VM was paused for ~23 min in the middle of it
+# (the host slept). Inside the VM nothing shows that directly — every clock stops together — but
+# two windows carried 110-140 ms stalls, and minutes later chrony started to pull the clock back
+# by running it 8.3 % fast for hours. Every interval and every rate of the lab (publisher pacing,
+# HTB, netem, t_trip) is timed by that clock, so a run must not start or continue in that state.
+#   - clock_adj_ms: how far the system clock (NTP-steered) moved against CLOCK_MONOTONIC_RAW
+#     (never steered) over an interval. Normal: a fraction of a ms per window; slewing: 2500 ms.
+#   - vm_pause_s: change of (host RTC - system clock) over an interval. The emulated RTC follows
+#     the HOST's clock and keeps running while the VM is paused; 1 s resolution.
+CLOCK_ADJ_MAX_MS = 5.0       # per interval (2 s check at setup, ~32 s window)
+VM_PAUSE_MAX_S = 1.5         # RTC has 1 s resolution: a change below this is rounding
+RTC_OFFSET_MAX_S = 5.0       # |host RTC - system clock| at setup
+RTC_PATH = "/sys/class/rtc/rtc0/since_epoch"
+
+def clock_read():
+    """(CLOCK_MONOTONIC, CLOCK_MONOTONIC_RAW, host RTC - system clock in s or None if no RTC)."""
+    try:
+        with open(RTC_PATH) as f:
+            rtc = int(f.read()) - time.time()
+    except (OSError, ValueError):
+        rtc = None
+    return time.clock_gettime(time.CLOCK_MONOTONIC), time.clock_gettime(time.CLOCK_MONOTONIC_RAW), rtc
+
+def clock_delta(c0, c1):
+    """Between two clock_read(): (ms the system clock gained on the raw clock, s the system clock
+    lost on the host RTC = time the VM was not running; None without an RTC)."""
+    adj_ms = ((c1[0] - c0[0]) - (c1[1] - c0[1])) * 1000.0
+    pause = (c1[2] - c0[2]) if (c0[2] is not None and c1[2] is not None) else None
+    return adj_ms, pause
+
+def clock_verdict(adj_ms, pause_s):
+    """Why an interval is unusable, or None."""
+    if abs(adj_ms) > CLOCK_ADJ_MAX_MS:
+        return (f"the system clock was adjusted by {adj_ms:+.1f} ms against the raw clock (limit {CLOCK_ADJ_MAX_MS:g} ms): "
+                f"it is being slewed, so every timer and rate in the lab is off")
+    if pause_s is not None and abs(pause_s) > VM_PAUSE_MAX_S:
+        return f"the VM did not run for about {pause_s:.0f} s (host RTC against the system clock): it was paused"
+    return None
+
+def clock_readback():
+    """The clock check before a run: a 2 s rate comparison and the offset from the host RTC. Dies
+    if the clock is being slewed or is seconds away from the host's clock."""
+    c0 = clock_read()
+    time.sleep(2)
+    c1 = clock_read()
+    adj_ms, _ = clock_delta(c0, c1)
+    res = {"adj_ms_in_2s": round(adj_ms, 3), "rtc_minus_system_s": None if c1[2] is None else round(c1[2], 1)}
+    fix = "fix: `chronyc makestep` as root, then check `chronyc tracking`"
+    why = clock_verdict(adj_ms, None)
+    if why:
+        q.die(f"clock check: {why} — {fix}")
+    if c1[2] is not None and abs(c1[2]) > RTC_OFFSET_MAX_S:
+        q.die(f"clock check: the system clock is {c1[2]:+.0f} s from the host RTC (limit {RTC_OFFSET_MAX_S:g} s) — "
+              f"the VM was paused and has not been re-synchronised; {fix}")
+    return res
 
 
 # ----------------------------- host CPU -----------------------------
@@ -494,6 +557,7 @@ def run_condition(cond, qos, bg_kbps, rep, writer, csvf, globals_, path):
     q.publishers_rearm()
     time.sleep(q.SETTLE_S)
 
+    k0 = clock_read()                                                  # + before the capture starts, well ahead of t0
     q.rgoose_capture_start()
     bfd0 = bfd_readback()                                              # +
     off0 = q.htb_class_stats(OVS_A, other_dev, "1:fffe")["pkts"]       # +
@@ -526,6 +590,11 @@ def run_condition(cond, qos, bg_kbps, rep, writer, csvf, globals_, path):
     bg_meas, bg_loss = (None, None)
     if bg_kbps:
         bg_meas, bg_loss = q.bg_stop()
+    clock_adj_ms, vm_pause_s = clock_delta(k0, clock_read())           # +
+    why = clock_verdict(clock_adj_ms, vm_pause_s)
+    if why:                                                            # no row is written for such a window
+        q.die(f"{cond} path={path} qos={qos} rep={rep}: {why}. Window discarded, run stopped "
+              f"(t_trip would have been {trip}) — re-synchronise the clock (`chronyc makestep` as root) and run again")
 
     active = {p["appid"] for p in q.ACTIVE}
     win = {a: m for a, m in q.measure_window(t0, t1, all_recs).items() if a in active}
@@ -561,6 +630,8 @@ def run_condition(cond, qos, bg_kbps, rep, writer, csvf, globals_, path):
         "host_cpu_mean_pct": round(cpu_mean, 1),
         "host_cpu_max_pct": round(max(t for t, _ in cpu_1s), 1),
         "host_core_max_pct": round(max(c for _, c in cpu_1s), 1),
+        "clock_adj_ms": round(clock_adj_ms, 3),
+        "vm_pause_s": "NA" if vm_pause_s is None else round(vm_pause_s, 1),
     }
     for appid, m in sorted(win.items()):
         row = {"cond": cond, "qos": qos, "bg_mbps": round(bg_kbps / 1000.0, 3), "appid": appid, "rep": rep,
@@ -579,7 +650,8 @@ def run_condition(cond, qos, bg_kbps, rep, writer, csvf, globals_, path):
     print(f"  [{cond} path={path} qos={qos} bg={bg_kbps}K rep={rep}] BFD {sel_tun} {extra['bfd_sel_start']}->{extra['bfd_sel_end']} "
           f"(flaps {extra['bfd_sel_flaps']}), {other_tun} {extra['bfd_other_start']}->{extra['bfd_other_end']} (flaps {extra['bfd_other_flaps']}); "
           f"other path carried {extra['other_path_pkts']} pkt; host CPU mean {extra['host_cpu_mean_pct']}% "
-          f"max {extra['host_cpu_max_pct']}% busiest core {extra['host_core_max_pct']}%")
+          f"max {extra['host_cpu_max_pct']}% busiest core {extra['host_core_max_pct']}%; "
+          f"clock adjusted {extra['clock_adj_ms']} ms, VM paused {extra['vm_pause_s']} s")
 
 
 # ----------------------------- summary -----------------------------

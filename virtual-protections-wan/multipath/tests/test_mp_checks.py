@@ -139,6 +139,17 @@ tot, core = m.cpu_util(c0, c1)
 assert abs(tot - 50.0) < 1e-9 and abs(core - 80.0) < 1e-9, (tot, core)                    # iowait counts as idle
 assert m.cpu_util(c0, c0) == (0.0, 0.0)                                                   # no time passed: no division
 
+# ---- the VM's clock: (monotonic, raw, host RTC - system clock) ----
+adj, pause = m.clock_delta((100.0, 50.0, -0.4), (132.0, 82.0, -0.9))                     # a healthy 32 s window
+assert abs(adj) < 1e-6 and abs(pause + 0.5) < 1e-9 and m.clock_verdict(adj, pause) is None
+adj, pause = m.clock_delta((100.0, 50.0, 1392.2), (132.0, 79.538, 1389.6))               # 2026-11-16: slewing 8.33 % fast
+assert abs(adj - 2462.0) < 1e-6 and "slewed" in m.clock_verdict(adj, pause), (adj, pause)
+adj, pause = m.clock_delta((100.0, 50.0, -0.4), (132.0, 82.0, 1422.3))                   # the VM was paused 23.7 min
+assert abs(adj) < 1e-6 and "paused" in m.clock_verdict(adj, pause), (adj, pause)
+assert m.clock_delta((1.0, 1.0, None), (2.0, 2.0, None)) == (0.0, None)                  # no RTC: only the rate check
+assert m.clock_verdict(0.2, None) is None and m.clock_verdict(-6.0, None) is not None
+assert "clock_adj_ms" in m.COLS and "vm_pause_s" in m.COLS
+
 # ---- acceptance summary: one t_trip per window, however many stream rows it has ----
 def row(cond, rep, trip, drops=0, flaps=0):
     return {"cond": cond, "qos": "on", "rep": str(rep), "t_trip_ms": trip, "ef_class_drops": str(drops), "bfd_sel_flaps": str(flaps)}

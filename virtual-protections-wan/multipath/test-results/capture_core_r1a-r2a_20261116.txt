@@ -1,0 +1,24 @@
+capture: clab-vied-mp-r2a eth1, 5 s, filter: udp dst port 4789 and dst host 10.10.53.2
+R-SV filter: udp dst port 4789 and dst host 10.10.53.2 and ip[48:2] = 0x0800 and ip[59] = 17 and ip[72:2] >= 102 and ip[72:2] <= 106
+
+vxlan_toward_vied: 59683
+rsv: 59676
+rsv_outer_dscp46: 59676
+rsv_inner_dscp46: 59676
+rsv_frame_248: 59676
+other_outer_dscp46: 0
+other: 7
+
+first three R-SV packets (tcpdump -e -v):
+19:52:24.994340 aa:c1:ab:3b:18:95 > aa:c1:ab:bf:56:79, ethertype IPv4 (0x0800), length 248: (tos 0xb8, ttl 63, id 46352, offset 0, flags [DF], proto UDP (17), length 234)
+    10.10.51.1.60977 > 10.10.53.2.4789: VXLAN, flags [I] (0x08), vni 101
+aa:c1:ab:f0:13:25 > aa:c1:ab:8d:7d:e9, ethertype IPv4 (0x0800), length 198: (tos 0xb8, ttl 64, id 15535, offset 0, flags [DF], proto UDP (17), length 184)
+    10.10.40.1.41618 > 10.10.30.1.102: UDP, length 156
+19:52:24.994442 aa:c1:ab:3b:18:95 > aa:c1:ab:bf:56:79, ethertype IPv4 (0x0800), length 248: (tos 0xb8, ttl 63, id 46353, offset 0, flags [DF], proto UDP (17), length 234)
+    10.10.51.1.59790 > 10.10.53.2.4789: VXLAN, flags [I] (0x08), vni 101
+aa:c1:ab:0c:f7:20 > aa:c1:ab:8d:7d:e9, ethertype IPv4 (0x0800), length 198: (tos 0xb8, ttl 64, id 29031, offset 0, flags [DF], proto UDP (17), length 184)
+    10.10.40.2.60935 > 10.10.30.1.103: UDP, length 156
+19:52:24.994442 aa:c1:ab:3b:18:95 > aa:c1:ab:bf:56:79, ethertype IPv4 (0x0800), length 248: (tos 0xb8, ttl 63, id 46354, offset 0, flags [DF], proto UDP (17), length 234)
+    10.10.51.1.60629 > 10.10.53.2.4789: VXLAN, flags [I] (0x08), vni 101
+aa:c1:ab:be:2a:5b > aa:c1:ab:8d:7d:e9, ethertype IPv4 (0x0800), length 198: (tos 0xb8, ttl 64, id 26687, offset 0, flags [DF], proto UDP (17), length 184)
+    10.10.40.3.40513 > 10.10.30.1.104: UDP, length 156

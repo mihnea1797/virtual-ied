@@ -92,6 +92,26 @@ rate-capped and best-effort are unchanged.
 A smoke test after the merge (2026-10-31, rsv4.5 EF work-conserving, one window) passed:
 1 R-GOOSE frame, 0 receive-buffer drops, 5/5 publishers alive.
 
+## Multipath lab (branch `multipath-phase1`, 2026-11-16)
+
+`virtual-protections-wan/multipath/` is a second lab, `vied-mp` (containers `clab-vied-mp-*`): the
+paper lab with two disjoint WAN paths, one VXLAN tunnel per path between `ovs-a` and `ovs-b`, BFD
+on both, a per-run path pin, and every shaping rate x1.25 for the tunnel overhead. Spec
+`docs/handoff-multipath-phase1.md`, report and status `docs/multipath-phase1-report.md`, layout
+and commands `virtual-protections-wan/multipath/README.md`. Every parameter is in `params.env`.
+
+- Only one lab can be deployed at a time. `multipath/mp-lab-up.sh --replace-paper-lab` takes the
+  paper lab's deployment down first; the systemd unit still redeploys the paper lab at boot.
+- Nothing under `virtual-protections-wan/` outside `multipath/` may change for this work: the
+  paper lab must stay runnable as published.
+- Driver: `.venv/bin/python -u multipath/mp_sweep.py --path a|b` from `virtual-protections-wan/`
+  (it imports `qos_sweep.py`); self-check `multipath/tests/test_mp_checks.py`.
+- **The VM can be paused by its host mid-run.** Nothing inside shows it directly; afterwards chrony
+  runs the clock 8.3 % fast for hours, and every timer and rate in the lab follows that clock.
+  `mp_sweep.py` checks for it before and during a run; `qos_sweep.py` does not. Check
+  `chronyc tracking` ("System time" must be near 0) before any timing run; the fix is
+  `sudo chronyc makestep`.
+
 ## Known caveats
 
 - **t_trip attribution.** The vIED cannot tell which stream raised the trip; vMU1-3 all

@@ -25,6 +25,7 @@ vmu1-3, load-src -> ovs-a ==(path A: r1a - r2a)== ovs-b -> vied
 | `mp-path.sh a\|b` | pin all site-to-site traffic to one path |
 | `mp-wan-qos.sh` | the four routers: EF/best-effort classes + netem per direction |
 | `mp_sweep.py` | driver: the paper driver's measurement code + path pin + extended read-back |
+| `mp_accept_checks.py` | acceptance tests 3 and 4: `capture` (outer DSCP on the core link), `bfd-cut` (BFD while a core link is cut) |
 | `tests/test_mp_checks.py` | self-check of the read-back parsers (no lab needed) |
 | `test-results/` | kept results; fresh runs write `mp_sweep_<stamp>_path<x>.csv` here, untracked |
 
@@ -39,7 +40,8 @@ multipath/mp-lab-up.sh --replace-paper-lab        # takes the paper lab's deploy
 
 (all from `virtual-protections-wan/`). The driver aborts if anything it reads from the data plane
 differs from `params.env` or from the requested path, and restores marking, the default pin and
-path B's delay on every exit.
+path B's delay on every exit. It also aborts when the VM's clock is being slewed or the VM was
+paused during a window (`chronyc tracking`; fix with `sudo chronyc makestep`).
 
 Back to the paper lab: `containerlab destroy -t multipath/vied-mp.clab.yml`, then `./lab-up.sh`
 (or reboot: the systemd unit redeploys the paper lab, and this lab's containers come back without
