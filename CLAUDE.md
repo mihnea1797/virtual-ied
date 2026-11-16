@@ -106,6 +106,11 @@ and commands `virtual-protections-wan/multipath/README.md`. Every parameter is i
   paper lab must stay runnable as published.
 - Driver: `.venv/bin/python -u multipath/mp_sweep.py --path a|b` from `virtual-protections-wan/`
   (it imports `qos_sweep.py`); self-check `multipath/tests/test_mp_checks.py`.
+- Acceptance, 2026-11-16 (EF work-conserving, 10 x 30 s per condition): path A 18.26 ms without
+  background and 18.27 ms at the 140 % level, path B 18.24 and 18.31 ms; none above 20 ms, 0 EF
+  drops; all R-SV carries DSCP 46 on the outer header; BFD goes down only on the cut path.
+  Open: 4 of those 40 windows have gaps above 16 ms (short delay spikes), 0 of 70 in the paper
+  lab's kept EF runs; not yet known whether that is this lab or the host on that day.
 - **The VM can be paused by its host mid-run.** Nothing inside shows it directly; afterwards chrony
   runs the clock 8.3 % fast for hours, and every timer and rate in the lab follows that clock.
   `mp_sweep.py` checks for it before and during a run; `qos_sweep.py` does not. Check

@@ -5,9 +5,9 @@
 - Raw results: [`virtual-protections-wan/multipath/test-results/`](../virtual-protections-wan/multipath/test-results/)
 - Date of all measurements: 2026-11-16
 
-**Status: not finished.** Tests 3 and 4 pass. Test 1 (path A) was measured once, in a run that the
-VM's own pause disturbed; it is kept as measured and has to be repeated. Test 2 (path B) has not
-been run. Both wait for the VM clock to be correct again (see "The VM pause").
+**Status: all five acceptance tests pass.** One finding is outside those tests and open: in 4 of
+the 40 accepted windows the streams show short delay spikes with gaps above 16 ms, which none of
+the paper lab's kept EF runs show (see "Delay spikes").
 
 ## What was built
 
@@ -54,35 +54,39 @@ Every shaping rate and ceiling is the paper's × 1.25 (198 B frames become 248 B
 
 | Test | Result | Raw data |
 |---|---|---|
-| 1. Path A alone | measured in a disturbed run, **to be repeated** | `acceptance_pathA_20261116_vm-paused.csv` |
-| 2. Path B alone | **not run yet** | — |
+| 1. Path A alone | **pass** | `acceptance_pathA_20261116.csv`, `_readback.json`, `.log.txt` |
+| 2. Path B alone | **pass** | `acceptance_pathB_20261116.csv`, `_readback.json`, `.log.txt` |
 | 3. Marking survives the tunnel | **pass** | `capture_core_r1a-r2a_20261116.pcap`, `.txt` |
 | 4. BFD sees its own path | **pass** | `bfd_cut_20261116.csv` |
-| 5. No EF drops without background | path A: 0 drops in 10 windows; path B pending | as test 1 |
+| 5. No EF drops without background | **pass**: 0 drops in 10 + 10 windows | as tests 1 and 2 |
 
-### Test 1, path A (EF, work-conserving, 1 warm-up pass + 10 × 30 s)
+### Tests 1 and 2 (EF, work-conserving, 1 discarded warm-up pass + 10 × 30 s per condition)
 
-| Condition | n | t_trip mean | min – max | above 20 ms | EF drops | paper |
+| Path | Condition | n | t_trip mean | min – max | above 20 ms | EF drops |
 |---|---|---|---|---|---|---|
-| no background (63.5 %) | 10 | 18.31 ms | 18.20 – 18.76 | 0 | 0 | 18.26 (18.17 – 18.39), 0 |
-| 140 % level (146.2 %) | 10 | 18.61 ms | 18.12 – 21.46 | 1 | 0 | 18.27 (18.20 – 18.39), 0 |
+| A | no background (63.5 % of the ceiling) | 10 | 18.26 ms | 18.16 – 18.35 | 0 | 0 |
+| A | 140 % level (146.2 %) | 10 | 18.27 ms | 18.25 – 18.33 | 0 | 0 |
+| B | no background | 10 | 18.24 ms | 18.16 – 18.42 | 0 | 0 |
+| B | 140 % level | 10 | 18.31 ms | 18.16 – 18.45 | 0 | 0 |
+| paper | no background | 10 | 18.26 ms | 18.17 – 18.39 | 0 | — |
+| paper | 140 % level | 10 | 18.27 ms | 18.20 – 18.39 | 0 | — |
 
-Both means are within the 1 ms tolerance of 18.3 ms. In all 20 windows: 0 samples lost, 0 EF
-drops, 0 receive-buffer drops, 1 R-GOOSE frame, 248.0 B frames in the EF class on all three hops,
-BFD up on both tunnels with no flap. Ping RTT with the streams running: 10.15 ms (paper 10.13).
+All four means are within 0.06 ms of the paper's 18.3 ms (tolerance 1 ms). In all 40 windows:
 
-This run is not a clean acceptance result, for one reason outside the lab:
+- 0 samples lost, 0 EF drops on any hop, 0 receive-buffer drops at the vIED, 1 R-GOOSE frame;
+- 248.0 B frames in the EF class, and matching packet counts in the EF class of all three hops
+  (within 0.2 %, the hops being read one after another);
+- 37–40 packets on the unselected path per window (its BFD session and nothing else);
+- BFD up on both tunnels at the start and end of every window, no flap, also at the 140 % level;
+- the background generator delivered 13.6 Mb/s of the 28.8 Mb/s it offered and no best-effort
+  packet was dropped: it is held back at the source, as in the paper lab (11.4 of 24 Mb/s there);
+- clock adjustment 0.12–0.38 ms per window, no VM pause;
+- host CPU 7–48 % averaged over a window, with single seconds up to 57 %.
 
-- **The VM was paused for about 23.7 minutes during the run**, around 19:37 VM time.
-- The two windows around the pause (140 % repetition 4, no-background repetition 5) show stalls
-  of 110–140 ms in all three streams and 47 gaps above 16 ms; no other window has any. Their
-  t_trip values (18.40 and 18.31 ms) are unaffected because the stall missed the step.
-- From 19:42:57 the time daemon ran the clock 8.3 % fast to catch up. The last four windows were
-  measured wholly or partly in that state, including the one 21.46 ms trip (140 % repetition 9). Whether the
-  clock state caused that trip is not known.
-- The seven windows per condition before or between these two effects give 18.32 ms
-  (18.20 – 18.76) without background and 18.28 ms (18.12 – 18.47) at the 140 % level, none above
-  20 ms. This is a subset chosen after the fact and is not offered as the acceptance result.
+Ping RTT with the streams running: 10.14 ms on path B. On path A the run's own reading was
+23.29 ms, an average of 10 pings taken once at setup; the same path read 10.15 ms in the two runs
+before it. The 20 trip times that followed are not consistent with a path that slow, so this reads
+as one or more pings caught by a delay spike (next section), but the single pings were not logged.
 
 ### Test 3, marking survives the tunnel
 
@@ -103,22 +107,50 @@ about four times a second at both switches.
 | `r1b`–`r2b` | `vxb` down at both ends 2.5 – 2.7 s after the cut | `vxa` up in all 47 samples | all sessions up after 1.3 s |
 
 Nothing failed over (none is configured). Shapers, netem, tunnels and pin read back unchanged
-afterwards. The test ran while the clock was 8.3 % fast, so the seconds above are about 8 % shorter
-than real seconds; the up/down outcome does not depend on that.
+afterwards. The test ran while the VM clock was 8.3 % fast (next section but one), so the seconds
+above are about 8 % shorter than real seconds; the up/down outcome does not depend on that.
+
+## Delay spikes (open, outside the acceptance tests)
+
+The acceptance tests look at t_trip, drops, marking and BFD. The per-stream gap and delay
+columns show something those tests do not cover:
+
+| Runs, EF arm, 3 streams | Windows | Windows with a gap above 16 ms | Worst one-way delay of a sample |
+|---|---|---|---|
+| Paper lab, kept runs (2026-08-29, 2026-09-30) | 70 | 0 | 28 ms |
+| This lab, path A | 20 | 2 (3 gaps) | 61 ms |
+| This lab, path B | 20 | 2 (7 gaps) | 684 ms (next worst 83 ms) |
+
+- The spikes last tens of milliseconds, come with a burst of reordered samples, and lose
+  nothing. They did not move any t_trip, because none coincided with a step.
+- The kernel printed `htb: too many events!` five times today: twice at 19:23:20, as the driver
+  moved the pin back from path B to path A after the path B build check, and three times during
+  the path B run (20:45:48 inside the first spike window, 20:48:47 at the start of the second,
+  20:49:24 four seconds after it). None was logged during the path A runs, which have spikes too.
+  The kernel log only goes back to today's boot, so whether the paper lab ever produced that
+  message is unknown.
+- Not known: whether this is the two-path lab (more per-packet kernel work: encapsulation and
+  one more hop) or the host as it is today. The paper lab was not run today.
+- Why it matters: phase 2 measures outages of exactly this size. A same-day run of the paper lab
+  with the same procedure would separate "the lab" from "the day"; that should come first.
 
 ## The VM pause
 
-- Evidence: the time daemon reported the clock wrong by 1422.76 s at 19:42:57, after being in sync
-  since boot; an external HTTP `Date` header and the emulated RTC (which follows the host) agree;
-  the kernel logged a display-driver timeout at 19:37:22, the only one in its journal.
-- Effect on a run: every timer and rate in the lab (publisher pacing, HTB, netem, t_trip) is timed
-  by the VM's clock. While the daemon corrects a large offset, that clock runs 83 334 ppm fast
-  against the raw hardware clock (measured), for about 4.6 hours.
+The first path A run is kept (`acceptance_pathA_20261116_vm-paused.csv`) but is not the
+acceptance result: the VM was paused for about 23.7 minutes in the middle of it.
+
+- Evidence: the time daemon reported the clock wrong by 1422.76 s at 19:42:57 after being in sync
+  since boot; an external HTTP `Date` header and the emulated RTC (which follows the host) agreed.
+  The kernel logged a display-driver timeout at 19:37:22 (its log starts at today's boot).
+- That run: no background 18.31 ms (18.20 – 18.76), 140 % level 18.61 ms (18.12 – 21.46, one trip
+  above 20 ms), 0 EF drops. The two windows around the pause carry 110–140 ms stalls and 47 gaps
+  above 16 ms. From 19:42:57 the daemon ran the clock 8.3 % fast (83 334 ppm against the raw
+  hardware clock, measured); the last four windows, including the 21.46 ms trip, fall wholly or
+  partly in that state.
+- The owner stepped the clock (`sudo chronyc makestep`) before the two accepted runs.
 - The driver now checks this. Before a run it aborts if the clock is being slewed or is seconds
   away from the host RTC. Per window it records `clock_adj_ms` and `vm_pause_s`, and stops the run
   without writing the row if either shows a slew or a pause.
-- To continue: `sudo chronyc makestep` on the VM (or wait for the slew to end), and keep the host
-  from pausing the VM during a run.
 
 ## What differs from the spec
 
@@ -131,10 +163,13 @@ than real seconds; the up/down outcome does not depend on that.
 | Ping RTT | read before each run | read with the streams running | the paper's 10.13 ms was measured that way; an idle lab reads about 11 ms in both labs |
 | Read-back | six items | plus MTU, HTB quanta and bursts, and the VM clock | found necessary while building |
 | Idle `controller` node, host port 8080 | — | left out | no controller in phase 1; the port would collide with the paper lab at boot |
+| Path A | one run | two runs, the first kept but not accepted | the VM pause |
 
 ## Open
 
-- Repeat test 1 and run test 2 on a correct clock (about 20 minutes each).
+- The delay spikes: run the paper lab today with the same procedure as a control, then decide.
+- The driver logs one averaged ping at setup; logging the single pings would have explained the
+  23.29 ms reading on path A.
 - The paper lab's driver has no clock check; a paused VM would go unnoticed there too.
-- BFD shares the routers' best-effort class. It did not flap at the 140 % level in this run; phase 2
-  should decide its timers and whether it needs its own class.
+- BFD shares the routers' best-effort class. It did not flap at the 140 % level in 30 windows;
+  phase 2 should decide its timers and whether it needs its own class.
